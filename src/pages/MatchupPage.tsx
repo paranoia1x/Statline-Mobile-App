@@ -96,7 +96,7 @@ export default function MatchupPage({ id }: { id: string }) {
       <ListCard>
         {rows.map((r) => (
           <div key={r.vm.id} className="flex items-center justify-between gap-3 px-3.5 py-2.5">
-            <PlayerInline player={r.vm} sub={r.vm.injury ? <AvailabilityBadge status={r.vm.injury.status} description={r.vm.injury.description} /> : null} />
+            <PlayerInline player={r.vm} sub={r.vm.injury ? <AvailabilityBadge status={r.vm.injury.status} description={r.vm.injury.description} seasonEnding={r.vm.injury.seasonEnding} returns={r.vm.injury.expectedReturn} /> : null} />
             <div className="shrink-0 text-right text-xs">
               <div className="num text-sm text-white">{r.projection == null ? "—" : r.projection.toFixed(1)} <span className="text-ink-400">{r.statLabel}</span></div>
               {r.pOver != null && <div className="num text-ink-400">P(&gt;{r.threshold}) {pct(r.pOver)}</div>}
@@ -249,7 +249,7 @@ export default function MatchupPage({ id }: { id: string }) {
                       <div className="truncate text-sm text-ink-100">{p.name}</div>
                       <div className="truncate text-xs text-ink-400">{teams.get(p.teamId)?.abbreviation} · {inj.get(p.id)!.description}</div>
                     </div>
-                    <AvailabilityBadge status={inj.get(p.id)!.status} />
+                    <AvailabilityBadge status={inj.get(p.id)!.status} seasonEnding={inj.get(p.id)!.seasonEnding} returns={inj.get(p.id)!.expectedReturn} />
                   </a>
                 ))}
               </ListCard>

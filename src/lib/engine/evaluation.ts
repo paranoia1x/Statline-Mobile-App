@@ -1,6 +1,7 @@
 import { getProvider } from "@/lib/data";
+import { teammatesOut } from "./teammates";
 import { SPORTS, statDef } from "@/lib/sports";
-import type { SportId } from "@/lib/types";
+import type { Player, SportId } from "@/lib/types";
 import type { Prediction } from "@/lib/store/types";
 import { getLeagueContext } from "./context";
 import { clamp, logit, median, sigmoid } from "./math";
@@ -94,6 +95,11 @@ g.__bt ??= new Map();
  * threshold set at the median of their prior 10 games (+0.5). Used for
  * probability calibration and the "model performance" panels.
  */
+/** Forget cached backtests (used when model settings change, e.g. while tuning). */
+export function clearBacktestCache() {
+  g.__bt!.clear();
+}
+
 export function runBacktest(sport: SportId): Promise<BacktestResult> {
   // the app uses the results the data job computed (a full backtest is too heavy for a phone)
   const pre = precomputed.get(sport);
@@ -111,35 +117,9 @@ const GAMES_PER_PLAYER = 6;
 async function doBacktest(sport: SportId): Promise<BacktestResult> {
   const prov = getProvider();
   const players = await prov.listPlayers({ sport });
-  const samples: BacktestSample[] = [];
-  for (const player of players) {
-    const logs = await prov.getPlayerLogs(player.id);
-    if (logs.length < 14) continue;
-    const head = (SPORTS[sport].headline[player.positionGroup] ?? []).map((k) => statDef(sport, k)).filter((s) => s && s.forecastable).slice(0, 2);
-    const targets = logs.slice(-GAMES_PER_PLAYER);
-    for (const target of targets) {
-      const prior = logs.filter((l) => l.date < target.date);
-      if (prior.length < 8) continue;
-      const ctx = await getLeagueContext(sport, target.date);
-      for (const stat of head) {
-        if (!stat) continue;
-        const prevVals = prior.slice(-10).map((l) => l.stats[stat.key]).filter((v): v is number => typeof v === "number");
-        const actual = target.stats[stat.key];
-        if (prevVals.length < 5 || typeof actual !== "number") continue;
-        const m = median(prevVals);
-        const threshold = Math.max(0.5, Math.floor(m) + 0.5);
-        const f = computePlayerForecast({
-          player, logs: prior, stat, opponentId: target.opponentId, home: target.home, gameId: target.gameId,
-          gameDate: target.date, ctx, injury: null, threshold, dataSource: prov.isDemo ? "demo" : "live",
-        });
-        samples.push({
-          sport, statKey: stat.key, playerId: player.id, gameId: target.gameId, date: target.date, threshold,
-          rawPOver: f.rawPOver, outcome: actual > threshold ? "over" : actual < threshold ? "under" : "push",
-          confidence: f.confidence.level,
-        });
-      }
-    }
-  }
+  // players are evaluated in parallel (short await chains; React dev mode chokes on very long ones)
+  const perPlayer = await Promise.all(players.map((player) => backtestPlayer(sport, player)));
+  const samples: BacktestSample[] = perPlayer.flat();
   const decided = samples.filter((s) => s.outcome !== "push");
   const fit = (ss: BacktestSample[]) => fitSlope(ss.map((s) => ({ p: clamp(s.rawPOver, 0.01, 0.99), hit: (s.outcome === "over" ? 1 : 0) as 0 | 1 })));
   const slope = fit(decided);
@@ -186,6 +166,40 @@ async function doBacktest(sport: SportId): Promise<BacktestResult> {
     bins: calibrationBins(scoredCal),
     byConfidence,
   };
+}
+
+async function backtestPlayer(sport: SportId, player: Player): Promise<BacktestSample[]> {
+  const prov = getProvider();
+  const samples: BacktestSample[] = [];
+    const logs = await prov.getPlayerLogs(player.id);
+    if (logs.length < 14) return samples;
+    const head = (SPORTS[sport].headline[player.positionGroup] ?? []).map((k) => statDef(sport, k)).filter((s) => s && s.forecastable).slice(0, 2);
+    const targets = logs.slice(-GAMES_PER_PLAYER);
+    for (const target of targets) {
+      const prior = logs.filter((l) => l.date < target.date);
+      if (prior.length < 8) continue;
+      const ctx = await getLeagueContext(sport, target.date);
+      const targetGame = await prov.getGame(target.gameId);
+      for (const stat of head) {
+        if (!stat) continue;
+        const prevVals = prior.slice(-10).map((l) => l.stats[stat.key]).filter((v): v is number => typeof v === "number");
+        const actual = target.stats[stat.key];
+        if (prevVals.length < 5 || typeof actual !== "number") continue;
+        const m = median(prevVals);
+        const threshold = Math.max(0.5, Math.floor(m) + 0.5);
+        const mates = targetGame ? await teammatesOut(player, stat.key, targetGame).catch(() => null) : null;
+        const f = computePlayerForecast({
+          player, logs: prior, stat, opponentId: target.opponentId, home: target.home, gameId: target.gameId,
+          gameDate: target.date, ctx, injury: null, threshold, dataSource: prov.isDemo ? "demo" : "live", teammatesOut: mates,
+        });
+        samples.push({
+          sport, statKey: stat.key, playerId: player.id, gameId: target.gameId, date: target.date, threshold,
+          rawPOver: f.rawPOver, outcome: actual > threshold ? "over" : actual < threshold ? "under" : "push",
+          confidence: f.confidence.level,
+        });
+      }
+    }
+    return samples;
 }
 
 /** One-parameter logit-slope calibration (Platt scaling without intercept) via grid search. */

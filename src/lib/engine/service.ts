@@ -5,6 +5,7 @@ import { getLeagueContext } from "./context";
 import { mean } from "./math";
 import { computePlayerForecast, type PlayerForecast } from "./player-forecast";
 import { getCalibration } from "./evaluation";
+import { teammatesOut } from "./teammates";
 
 export class ForecastError extends Error {
   constructor(message: string, public status = 400) {
@@ -87,6 +88,7 @@ export async function forecastPlayerStat(req: ForecastRequest): Promise<{ foreca
   const injury = isFuture ? await p.getInjury(player.id) : null;
   const prior = await positionPrior(player.sport, player.positionGroup, stat.key, game.date);
   const cal = await getCalibration(player.sport, stat.key);
+  const mates = await teammatesOut(player, stat.key, game).catch(() => null);
   const forecast = computePlayerForecast({
     player,
     logs,
@@ -102,6 +104,7 @@ export async function forecastPlayerStat(req: ForecastRequest): Promise<{ foreca
     prior,
     calibrationSlope: cal,
     now: p.now(),
+    teammatesOut: mates,
   });
   if (!isFuture) forecast.warnings.push("This game has already been played; the forecast uses only data available before tip-off/kick-off.");
   return { forecast, player, game };

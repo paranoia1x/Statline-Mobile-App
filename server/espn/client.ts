@@ -13,7 +13,7 @@ import { dataDir } from "../paths";
  * - Global concurrency limit keeps request volume polite.
  */
 export const ESPN_API_HOSTS = new Set(["site.api.espn.com", "site.web.api.espn.com", "sports.core.api.espn.com"]);
-export const ESPN_IMAGE_HOSTS = ["a.espncdn.com"];
+export const ESPN_IMAGE_HOSTS = ["a.espncdn.com", "s.espncdn.com"];
 
 const MAX_BYTES = 8 * 1024 * 1024;
 const CONCURRENCY = Number(process.env.ESPN_CONCURRENCY || 6);

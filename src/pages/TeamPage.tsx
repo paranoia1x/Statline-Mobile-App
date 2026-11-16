@@ -162,7 +162,7 @@ export default function TeamPage({ id }: { id: string }) {
               <div key={r.vm.id} className="flex items-center justify-between gap-2 px-3.5 py-2.5">
                 <PlayerInline player={r.vm} size="sm" sub={null} />
                 <div className="text-right">
-                  {r.vm.injury && <AvailabilityBadge status={r.vm.injury.status} description={r.vm.injury.description} />}
+                  {r.vm.injury && <AvailabilityBadge status={r.vm.injury.status} description={r.vm.injury.description} seasonEnding={r.vm.injury.seasonEnding} returns={r.vm.injury.expectedReturn} />}
                   <div className="num mt-0.5 text-[11px] text-ink-300">{r.line}</div>
                 </div>
               </div>

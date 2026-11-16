@@ -6,5 +6,11 @@ export const MODEL_VERSIONS = [
     description:
       "Shrunken EWMA baseline (recent form, season, career) with opponent-allowance, home/away, playing-time, head-to-head and availability adjustments; negative-binomial / normal outcome distributions; walk-forward backtest calibration.",
   },
+  {
+    id: "stat-forecast-1.1.0",
+    released: "2026-11-16",
+    description:
+      "Default line is the player's typical line (median of the last 10 games) instead of the model's own projection. Baseline weights retuned on the walk-forward backtest (slower-moving recent form, more season weight). NBA projections account for key teammates who are out. Players ruled out are flagged.",
+  },
 ];
 export const CURRENT_MODEL_VERSION = MODEL_VERSIONS[MODEL_VERSIONS.length - 1].id;

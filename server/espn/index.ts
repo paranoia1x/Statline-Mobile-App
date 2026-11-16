@@ -98,8 +98,9 @@ const injuryStatus = (s: string): AvailabilityStatus => {
   if (x.includes("day")) return "day-to-day";
   if (x.includes("question")) return "questionable";
   if (x.includes("doubt")) return "doubtful";
-  return "out";
+  return "out"; // Out, Injured Reserve, IL, Suspension…
 };
+const SEASON_ENDING = /out for (the )?(rest of the )?season|season[- ]ending|miss the (rest of the |remainder of the )?season/i;
 
 interface SportState {
   teams: Team[];
@@ -306,12 +307,19 @@ export class EspnProvider implements SportsDataProvider {
           if (!aid) continue;
           const pid = `${sport}-p${aid}`;
           const details = i.details ?? {};
+          const statusText = String(i.status ?? i.type?.description ?? "out");
+          const status = injuryStatus(statusText);
+          const fantasy = String(details.fantasyStatus?.abbreviation ?? "").toUpperCase();
+          const seasonEnding = status === "out" && (fantasy === "OFS" || SEASON_ENDING.test(`${i.shortComment ?? ""} ${i.longComment ?? ""}`));
+          const what = [details.type, details.detail].filter(Boolean).join(" — ") || (/suspen/i.test(statusText) ? "Suspension" : "") || "Injury";
           injuries.set(pid, {
             playerId: pid,
-            status: injuryStatus(String(i.status ?? i.type?.description ?? "out")),
-            description: [details.type, details.detail].filter(Boolean).join(" — ") || i.shortComment || "Injury",
+            status,
+            description: seasonEnding ? `${what} (out for season)` : what,
             updatedAt: i.date ? new Date(i.date).toISOString() : new Date().toISOString(),
-            expectedReturn: details.returnDate ? new Date(details.returnDate).toISOString() : null,
+            expectedReturn: !seasonEnding && details.returnDate ? new Date(details.returnDate).toISOString() : null,
+            seasonEnding,
+            note: typeof i.shortComment === "string" ? i.shortComment.slice(0, 400) : null,
           });
         }
       }

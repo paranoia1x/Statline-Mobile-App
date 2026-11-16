@@ -26,6 +26,9 @@ It opens full-screen with the STATLINE icon, like a regular app.
 - **No account needed.** Your Research Vault, tracked forecasts and imported PrizePicks lines are saved on the phone. **Settings → Export backup** opens your phone's share sheet so you can save the backup to Files or Drive, or send it to yourself; **Import backup** merges it back.
 - **Appearance:** all the desktop themes (Midnight, Carbon, Navy, OLED Black, Dim, Light, Paper, Auto), accent colours, any team's colours, and text size. The phone's status bar follows the theme.
 - **Explanations** use the engine's built-in summaries (an AI key can't be stored safely inside a public web app). Every number still comes from the same statistical engine.
+- **Sports News** (Home and More): the latest ESPN headlines with photos and links to the full stories, plus an **Injuries** tab with the newest injury-report notes. Headlines load straight from ESPN; offline, the last saved copy is shown.
+- **Injuries:** badges show *Out for season* and expected return dates. A player who's ruled out gets a clear "not expected to play" notice, and NBA projections account for key teammates who are out.
+- **Forecast lines:** without a PrizePicks line, forecasts use the player's typical line (median of his last 10 games), so the percentages show real leans instead of sitting near 50%.
 - **Works offline:** stats you've opened are saved on the phone. When you're offline, the app says so and shows the saved stats.
 
 ## Where the data comes from

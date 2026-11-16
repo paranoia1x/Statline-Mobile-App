@@ -49,21 +49,21 @@ export function ForecastView({ data, compact = false }: { data: ForecastPayload;
     <div className="space-y-5">
       <div className="flex flex-col gap-4 md:flex-row md:items-center">
         <div className="flex items-center gap-4">
-          <PlayerAvatar name={player.name} imageUrl={player.imageUrl} size="xl" ringColor={player.team?.colors.primary} />
-          <div>
+          <PlayerAvatar name={player.name} imageUrl={player.imageUrl} size="xl" ringColor={player.team?.colors.primary} className="max-sm:!h-20 max-sm:!w-20" />
+          <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               {f.sample.dataSource === "demo" && <Badge tone="warn">DEMO DATA</Badge>}
               <ConfidencePill level={f.confidence.level} score={f.confidence.score} />
-              {player.injury && <AvailabilityBadge status={player.injury.status} description={player.injury.description} />}
+              {player.injury && <AvailabilityBadge status={player.injury.status} description={player.injury.description} seasonEnding={player.injury.seasonEnding} returns={player.injury.expectedReturn} />}
             </div>
             <div className="mt-1 text-lg font-semibold text-white">{player.name}</div>
-            <div className="flex items-center gap-2 text-sm text-ink-300">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-ink-300">
               {player.team && <TeamLogo abbreviation={player.team.abbreviation} name={player.team.fullName} logoUrl={player.team.logoUrl} colors={player.team.colors} size="xs" />}
               {player.team?.abbreviation} {f.home ? "vs" : "@"}
               <TeamLogo abbreviation={opponent.abbreviation} name={opponent.fullName} logoUrl={opponent.logoUrl} colors={opponent.colors} size="xs" />
               {opponent.abbreviation}
               <span className="text-ink-500">·</span>
-              {fmtDateTime(f.gameDate)}
+              <span className="whitespace-nowrap">{fmtDateTime(f.gameDate)}</span>
             </div>
           </div>
         </div>
@@ -76,15 +76,34 @@ export function ForecastView({ data, compact = false }: { data: ForecastPayload;
             </div>
           </div>
           <div className="rounded-lg border border-ink-700 bg-ink-850 px-4 py-3">
-            <div className="label">{data.line ? "PrizePicks line" : "Threshold"}</div>
+            <div className="label">{data.line ? "PrizePicks line" : f.thresholdSource === "typical" ? "Typical line" : "Line"}</div>
             <div className="num mt-1 text-3xl font-semibold text-white">{f.threshold}</div>
             <div className="text-xs text-ink-400">
-              {data.line ? (data.line.origin === "feed" ? "Live PrizePicks line" : "From your imported board") : f.thresholdIsDefault ? "Auto (nearest half-unit)" : "User supplied"}
+              {data.line
+                ? data.line.origin === "feed" ? "Live PrizePicks line" : "From your imported board"
+                : f.thresholdSource === "typical" ? "Median of his last 10 games" : f.thresholdSource === "projection" ? "Near the projection (few games of data)" : "Your line"}
             </div>
             <div className="text-xs text-ink-300">{leanLabel}</div>
           </div>
         </div>
       </div>
+
+      {f.ruledOut && scheduledOrUnknown(game) && (
+        <div className="rounded-xl border border-neg/50 bg-neg/10 px-4 py-3 text-sm">
+          <div className="font-semibold text-neg">{player.injury?.seasonEnding ? "Out for the season" : "Ruled out for this game"}</div>
+          <div className="mt-0.5 text-ink-200">
+            {player.name} is not expected to play{player.injury?.description ? ` (${player.injury.description})` : ""}. The numbers below show what he&apos;d produce if he did. Pick&apos;em sites usually void picks on players who don&apos;t play.
+          </div>
+          {player.injury?.note && <div className="mt-1 text-xs text-ink-400">Latest: {player.injury.note}</div>}
+        </div>
+      )}
+      {f.teammatesOut && f.teammatesOut.players.length > 0 && (
+        <div className="rounded-lg border border-ink-700 bg-ink-850 px-4 py-2.5 text-xs text-ink-300">
+          <span className="font-semibold text-ink-100">Teammates out: </span>
+          {f.teammatesOut.players.slice(0, 4).map((x) => `${x.name} (${Math.round(x.share * 100)}% of team ${f.statLabel.toLowerCase()})`).join(", ")}.
+          {f.components.find((c) => c.label === "Teammates out" && c.effect > 1) ? " Projection raised for the extra opportunity." : " Noted — in this sport it isn't added to the projection (it didn't improve backtest accuracy)."}
+        </div>
+      )}
 
       <VerdictCard
         key={`${f.playerId}-${f.statKey}-${f.threshold}-${f.gameId}`}
@@ -199,4 +218,8 @@ export function ForecastView({ data, compact = false }: { data: ForecastPayload;
       </div>
     </div>
   );
+}
+
+function scheduledOrUnknown(game: { status?: string } | null | undefined) {
+  return !game || game.status === "scheduled";
 }

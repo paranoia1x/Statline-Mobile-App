@@ -62,12 +62,26 @@ export function DemoBadge() {
 }
 
 const STATUS_TONE: Record<AvailabilityStatus, Tone> = { active: "pos", "day-to-day": "blue", questionable: "warn", doubtful: "warn", out: "neg" };
-export function AvailabilityBadge({ status, description }: { status: AvailabilityStatus; description?: string }) {
+export function AvailabilityBadge({
+  status,
+  description,
+  seasonEnding,
+  returns,
+}: {
+  status: AvailabilityStatus;
+  description?: string;
+  /** Out for the rest of the season. */
+  seasonEnding?: boolean;
+  /** Expected return date (ISO), shown for players listed out. */
+  returns?: string | null;
+}) {
   const icon = status === "out" ? "✕" : status === "active" ? "●" : "!";
+  const back = status === "out" && !seasonEnding && returns ? new Date(returns).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : null;
   return (
-    <Badge tone={STATUS_TONE[status]} title={description}>
+    <Badge tone={STATUS_TONE[status]} title={[description, back && `Expected back around ${back}`].filter(Boolean).join(" · ")}>
       <span aria-hidden>{icon}</span>
-      {status === "active" ? "Available" : status.replace(/^\w/, (c) => c.toUpperCase())}
+      {seasonEnding ? "Out for season" : status === "active" ? "Available" : status.replace(/^\w/, (c) => c.toUpperCase())}
+      {back && <span className="opacity-80">· back ~{back}</span>}
     </Badge>
   );
 }

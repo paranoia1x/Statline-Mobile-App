@@ -118,7 +118,7 @@ export default function Players({ query }: { query: URLSearchParams }) {
                         {vm.team?.abbreviation} · {vm.position} · #{vm.jersey}
                       </div>
                       <div className="mt-1">
-                        <AvailabilityBadge status={vm.injury?.status ?? "active"} description={vm.injury?.description} />
+                        <AvailabilityBadge status={vm.injury?.status ?? "active"} description={vm.injury?.description} seasonEnding={vm.injury?.seasonEnding} returns={vm.injury?.expectedReturn} />
                       </div>
                     </div>
                   </div>

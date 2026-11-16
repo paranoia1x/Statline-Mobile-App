@@ -36,6 +36,12 @@ export interface PlayerForecast {
   interval80: [number, number];
   threshold: number;
   thresholdIsDefault: boolean;
+  /** Where the line came from: user/PrizePicks, the player's typical line, or the projection (thin data). */
+  thresholdSource: "given" | "typical" | "projection";
+  /** Player is listed out for this game (the projection assumes he plays). */
+  ruledOut: boolean;
+  /** Regular teammates missing from this game and the share of production they leave behind. */
+  teammatesOut: { share: number; players: { id: string; name: string; share: number }[] } | null;
   pOver: number;
   pUnder: number;
   pPush: number;
@@ -77,9 +83,43 @@ export interface ForecastInput {
   /** Logit-scale calibration slope fitted by the walk-forward backtest. */
   calibrationSlope?: { slope: number; samples: number } | null;
   now?: Date;
+  /** Regular teammates out for this game (see engine/teammates.ts). */
+  teammatesOut?: { share: number; players: { id: string; name: string; share: number }[] } | null;
 }
 
 const DAY = 86_400_000;
+
+/**
+ * Model settings. Tuned against the walk-forward backtest (scripts/tune-model.ts): every
+ * candidate is scored on games forecast with data from before each game only.
+ */
+export const MODEL_PARAMS = {
+  ewmaHalfLife: 14, // games (tuned; was 8)
+  wRecent: 0.3, // tuned; was 0.5
+  wSeason: 0.45, // tuned; was 0.35
+  wCareer: 0, // tuned; was 0.15
+  shrinkK: 5, // games of weight given to the position prior
+  oppStrength: 0.7,
+  minutesStrength: 0.6,
+  meanUncertainty: 0.12,
+  /**
+   * How much of the production freed by absent teammates goes to each remaining player, by sport.
+   * The backtest supports it in the NBA (usage clearly shifts when a star sits); in the other
+   * sports it made forecasts worse, so absences are reported there but don't change projections.
+   */
+  teammateBoost: { nba: 0.3, nfl: 0, mlb: 0, nhl: 0, soccer: 0 } as Record<SportId, number>,
+  /** Only teammates holding at least this share of team production count as a meaningful absence. */
+  teammateMinShare: 0.12,
+};
+
+/** The player's typical line: median of the last 10 games, as a half-point line (same rule as the backtest). */
+export function typicalLine(values: number[]): number | null {
+  const last = values.slice(-10);
+  if (last.length < 5) return null;
+  const s = [...last].sort((a, b) => a - b);
+  const m = s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2;
+  return Math.max(0.5, Math.floor(m) + 0.5);
+}
 const PER_MINUTE_SPORTS: SportId[] = ["nba", "nhl", "soccer", "nfl"];
 
 export function statValue(l: PlayerGameLog, stat: StatDef): number | null {
@@ -107,16 +147,17 @@ export function computePlayerForecast(input: ForecastInput): PlayerForecast {
   const seasonVals = seasonLogs.map((l) => statValue(l, stat)!);
 
   // ---------- baseline ----------
-  const recentEw = n ? ewma(values.slice(-40), 8) : NaN;
+  const P = MODEL_PARAMS;
+  const recentEw = n ? ewma(values.slice(-40), P.ewmaHalfLife) : NaN;
   const seasonMean = seasonVals.length ? mean(seasonVals) : NaN;
   const careerMean = n ? mean(values) : NaN;
   const parts: [number, number][] = [];
-  if (Number.isFinite(recentEw)) parts.push([recentEw, 0.5]);
-  if (Number.isFinite(seasonMean)) parts.push([seasonMean, 0.35 * Math.min(1, seasonVals.length / 10)]);
-  if (Number.isFinite(careerMean)) parts.push([careerMean, 0.15]);
+  if (Number.isFinite(recentEw)) parts.push([recentEw, P.wRecent]);
+  if (Number.isFinite(seasonMean)) parts.push([seasonMean, P.wSeason * Math.min(1, seasonVals.length / 10)]);
+  if (Number.isFinite(careerMean)) parts.push([careerMean, P.wCareer]);
   let base = parts.length ? parts.reduce((s, [v, w]) => s + v * w, 0) / parts.reduce((s, [, w]) => s + w, 0) : NaN;
   const prior = input.prior ?? (Number.isFinite(careerMean) ? careerMean : 0);
-  const k = 5;
+  const k = P.shrinkK;
   base = Number.isFinite(base) ? (n * base + k * prior) / (n + k) : prior;
   components.push({
     label: "Baseline",
@@ -134,7 +175,7 @@ export function computePlayerForecast(input: ForecastInput): PlayerForecast {
     const refMin = ewma(minutes.slice(-40), 12);
     if (refMin > 0) {
       const ratio = recentMin / refMin;
-      minutesAdj = clamp(1 + 0.6 * (ratio - 1), 0.75, 1.3);
+      minutesAdj = clamp(1 + P.minutesStrength * (ratio - 1), 0.75, 1.3);
       const t = welchT(minutes.slice(-5), minutes.slice(-25, -5));
       if (Math.abs(ratio - 1) > 0.12 && Math.abs(t) > 2) {
         context.push(
@@ -150,11 +191,31 @@ export function computePlayerForecast(input: ForecastInput): PlayerForecast {
   if (input.injury) {
     const st = input.injury.status;
     availAdj = st === "out" ? 0 : st === "doubtful" ? 0.75 : st === "questionable" ? 0.9 : st === "day-to-day" ? 0.97 : 1;
-    if (st === "out") warnings.push(`${player.name} is listed OUT (${input.injury.description}). A projection is shown for reference only; the player is not expected to play.`);
+    if (st === "out")
+      warnings.push(
+        input.injury.seasonEnding
+          ? `${player.name} is OUT FOR THE SEASON (${input.injury.description}). The projection only shows what he'd produce if he played.`
+          : `${player.name} is listed OUT (${input.injury.description}). A projection is shown for reference only; the player is not expected to play. Pick'em sites usually void picks on players who don't play.`,
+      );
     else warnings.push(`Availability: ${st} — ${input.injury.description}. Projection reduced to reflect possible limited playing time.`);
   }
   const effectiveAvail = availAdj === 0 ? 1 : availAdj;
   components.push({ label: "Availability", value: input.injury ? `${input.injury.status} (${pctEffect(effectiveAvail)})` : "No listed injury", effect: effectiveAvail });
+
+  // ---------- teammates out ----------
+  let mateAdj = 1;
+  const mates = input.teammatesOut && input.teammatesOut.share > 0 ? input.teammatesOut : null;
+  if (mates) {
+    mateAdj = clamp(1 + (P.teammateBoost[player.sport] ?? 0) * (mates.share / (1 - mates.share)), 1, 1.45);
+    const names = mates.players.slice(0, 3).map((x) => x.name).join(", ");
+    context.push(`${names}${mates.players.length > 3 ? " and others" : ""} ${mates.players.length === 1 ? "is" : "are"} out — about ${Math.round(mates.share * 100)}% of the team's ${stat.label.toLowerCase()} — so more opportunity goes to the players who remain.`);
+  }
+  components.push({
+    label: "Teammates out",
+    value: mates ? `${Math.round(mates.share * 100)}% of team ${stat.short} missing (${mateAdj > 1 ? pctEffect(mateAdj) : "noted, no adjustment in this sport"})` : "No key teammates out",
+    effect: mateAdj,
+    note: "Share of the team's recent production in this stat held by regulars who are out; part of it goes to remaining players.",
+  });
 
   // ---------- opponent ----------
   let oppAdj = 1;
@@ -162,7 +223,7 @@ export function computePlayerForecast(input: ForecastInput): PlayerForecast {
   const dimDef = sport.dims.find((d) => d.id === stat.dim);
   if (stat.dim) {
     oppIdx = ctx.dimIndex(input.opponentId, stat.dim);
-    if (oppIdx) oppAdj = clamp(1 + 0.7 * (oppIdx.index - 1), 0.8, 1.25);
+    if (oppIdx) oppAdj = clamp(1 + P.oppStrength * (oppIdx.index - 1), 0.8, 1.25);
   }
   components.push({
     label: "Opponent",
@@ -193,7 +254,7 @@ export function computePlayerForecast(input: ForecastInput): PlayerForecast {
   components.push({ label: "Head-to-head", value: h2h.length ? `${h2h.length} games, avg ${fmt(mean(h2hVals))} (${pctEffect(h2hAdj)})` : "No prior meetings", effect: h2hAdj, note: "Deliberately small weight: head-to-head samples are short and noisy." });
 
   // ---------- projection & distribution ----------
-  const mu = Math.max(0, base * minutesAdj * effectiveAvail * oppAdj * venueAdj * h2hAdj);
+  const mu = Math.max(0, base * minutesAdj * effectiveAvail * mateAdj * oppAdj * venueAdj * h2hAdj);
   const recentForSpread = values.slice(-30);
   const cvRaw = recentForSpread.length >= 5 && mean(recentForSpread) > 0 ? sd(recentForSpread) / mean(recentForSpread) : 0.6;
   const cv = clamp(Number.isFinite(cvRaw) ? cvRaw : 0.6, 0.12, 2.5);
@@ -201,11 +262,15 @@ export function computePlayerForecast(input: ForecastInput): PlayerForecast {
   let variance = (cv * Math.max(mu, 0.05)) ** 2;
   if (isCount) variance = Math.max(variance, mu * 1.02);
   // uncertainty in the mean itself
-  variance += (mu * 0.12) ** 2 / Math.max(1, n / 10);
+  variance += (mu * P.meanUncertainty) ** 2 / Math.max(1, n / 10);
   const sigma = Math.sqrt(variance);
 
+  // Default line: the player's typical line (median of the last 10 games). A line at the model's
+  // own projection would put every forecast at ~50% by construction.
   const thresholdIsDefault = input.threshold == null || !Number.isFinite(input.threshold);
-  const threshold = thresholdIsDefault ? defaultThreshold(mu, stat) : (input.threshold as number);
+  const typical = thresholdIsDefault ? typicalLine(values) : null;
+  const threshold = !thresholdIsDefault ? (input.threshold as number) : typical ?? defaultThreshold(mu, stat);
+  const thresholdSource: PlayerForecast["thresholdSource"] = !thresholdIsDefault ? "given" : typical != null ? "typical" : "projection";
 
   let pOver: number;
   let pUnder: number;
@@ -297,6 +362,13 @@ export function computePlayerForecast(input: ForecastInput): PlayerForecast {
     });
     if (similar.length >= 3) addAvg("Against opponents with a similar profile", similar.slice(-15).map((l) => statValue(l, stat)!), "similar", 0.35);
   }
+  if (mates && mateAdj > 1.02)
+    ev.push({
+      text: `${mates.players.slice(0, 2).map((x) => x.name).join(" and ")} ${mates.players.length === 1 ? "is" : "are"} out (${Math.round(mates.share * 100)}% of the team's ${stat.label.toLowerCase()}); projection raised ${pctEffect(mateAdj)}.`,
+      direction: "over",
+      weight: Math.min(0.9, (mateAdj - 1) * 3),
+      kind: "availability",
+    });
   if (input.injury && input.injury.status !== "out")
     ev.push({ text: `Listed ${input.injury.status}: ${input.injury.description}. Playing time may be limited.`, direction: "under", weight: 0.6, kind: "availability" });
   const slopeVals = values.slice(-15);
@@ -363,6 +435,9 @@ export function computePlayerForecast(input: ForecastInput): PlayerForecast {
     interval80: [lo, hi],
     threshold,
     thresholdIsDefault,
+    thresholdSource,
+    ruledOut: input.injury?.status === "out",
+    teammatesOut: mates,
     pOver,
     pUnder,
     pPush,

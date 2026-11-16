@@ -3,6 +3,9 @@ import { useData, useSport } from "@/hooks";
 import { gamesBetween, keyPlayersFor, trendingPerformances } from "@/lib/server/dashboard";
 import { gameVM, teamMap } from "@/lib/server/lookups";
 import { upcomingPlays } from "@/lib/plays";
+import { loadNews } from "@/lib/news-client";
+import { timeAgo } from "@/components/news";
+import { NewsImage } from "@/components/NewsImage";
 import { SPORTS } from "@/lib/sports";
 import { SPORT_IDS } from "@/lib/types";
 import { teamVM } from "@/lib/view";
@@ -47,6 +50,7 @@ export default function Home() {
 
   const plays = useData(async () => upcomingPlays(await loadPlays(), sport).slice(0, 5), [sport]);
   const trending = useData(() => trendingPerformances(sport, 5), [sport]);
+  const news = useData(async () => (await loadNews(sport)).items.slice(0, 4), [sport]);
   const model = useData(async () => (await loadModel()).filter((b) => !sport || b.sport === sport), [sport]);
 
   return (
@@ -98,6 +102,22 @@ export default function Home() {
         )}
         <p className="px-1 text-[11px] text-ink-500">No play is guaranteed — these are the model's strongest calls, and even those miss a meaningful share of the time.</p>
       </Section>
+
+      {news.data && news.data.length > 0 && (
+        <Section title="Latest news" action={<a href="#/news" className="text-brand-light">All news →</a>}>
+          <ListCard>
+            {news.data.map((n) => (
+              <a key={n.id} href={n.url ?? "#/news"} {...(n.url ? { target: "_blank", rel: "noopener noreferrer" } : {})} className="flex gap-3 px-3.5 py-3 active:bg-ink-800">
+                {n.imageUrl && <NewsImage src={n.imageUrl} className="h-14 w-20 shrink-0 rounded-md bg-ink-850 object-cover" />}
+                <span className="min-w-0">
+                  <span className="line-clamp-2 text-sm font-medium leading-snug text-ink-100">{n.headline}</span>
+                  <span className="mt-0.5 block text-[11px] text-ink-400">{n.sport.toUpperCase()} · {timeAgo(n.published)}</span>
+                </span>
+              </a>
+            ))}
+          </ListCard>
+        </Section>
+      )}
 
       <Section title="Tools">
         <div className="grid grid-cols-2 gap-3">

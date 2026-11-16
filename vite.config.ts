@@ -58,7 +58,7 @@ export default defineConfig({
             options: { cacheName: "statline-ocr", expiration: { maxEntries: 10 } },
           },
           {
-            urlPattern: ({ url }) => url.hostname === "a.espncdn.com",
+            urlPattern: ({ url }) => url.hostname === "a.espncdn.com" || url.hostname === "s.espncdn.com",
             handler: "CacheFirst",
             options: { cacheName: "statline-images", expiration: { maxEntries: 1500, maxAgeSeconds: 30 * 24 * 3600 }, cacheableResponse: { statuses: [0, 200] } },
           },

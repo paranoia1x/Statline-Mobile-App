@@ -140,7 +140,9 @@ export async function analyzeParlay(inputs: LegInput[], parlayOdds: number | nul
             push: f.pPush,
             label: labelFor(p / Math.max(1e-9, f.pOver + f.pUnder), f.confidence.level),
             confidence: f.confidence.level,
-            detail: `Projection ${f.projection.toFixed(1)} · ${f.sample.games} games of data`,
+            detail: f.ruledOut
+              ? `⚠ ${injury?.seasonEnding ? "Out for the season" : "Ruled out"} — this leg will most likely be voided · projection if he played ${f.projection.toFixed(1)}`
+              : `Projection ${f.projection.toFixed(1)} · ${f.sample.games} games of data${f.teammatesOut?.players.length ? ` · ${f.teammatesOut.players[0].name} out` : ""}`,
             ...(game ? await settle(game, leg) : null),
           };
         }

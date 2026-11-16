@@ -207,7 +207,7 @@ export function ForecastStudio({
                 id="threshold"
                 className="input"
                 inputMode="decimal"
-                placeholder={currentLine ? `Auto: PrizePicks line ${currentLine.line}` : "Auto: nearest half-unit to projection"}
+                placeholder={currentLine ? `Auto: PrizePicks line ${currentLine.line}` : "Auto: typical line (median of last 10 games)"}
                 value={threshold}
                 onChange={(e) => setThreshold(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && run()}

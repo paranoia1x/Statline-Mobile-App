@@ -27,7 +27,7 @@ export interface PlayerVM {
   teamId: string;
   imageUrl: string | null;
   team?: TeamVM;
-  injury?: Pick<Injury, "status" | "description"> | null;
+  injury?: Pick<Injury, "status" | "description" | "seasonEnding" | "expectedReturn" | "note"> | null;
 }
 
 export const teamVM = (t: Team): TeamVM => ({
@@ -37,7 +37,7 @@ export const teamVM = (t: Team): TeamVM => ({
 export const playerVM = (p: Player, team?: Team | null, injury?: Injury | null): PlayerVM => ({
   id: p.id, sport: p.sport, name: p.name, firstName: p.firstName, lastName: p.lastName, position: p.position, positionGroup: p.positionGroup,
   jersey: p.jersey, teamId: p.teamId, imageUrl: playerImageUrl(p), team: team ? teamVM(team) : undefined,
-  injury: injury ? { status: injury.status, description: injury.description } : null,
+  injury: injury ? { status: injury.status, description: injury.description, seasonEnding: !!injury.seasonEnding, expectedReturn: injury.expectedReturn ?? null, note: injury.note ?? null } : null,
 });
 
 export interface GameVM {

@@ -52,6 +52,7 @@ async function loadStudio(filterSport: SportId | null, q: URLSearchParams) {
       };
       try {
         const { forecast: f, game } = await forecastPlayerStat({ playerId: l.playerId, statKey: l.statKey, gameId: l.gameId, threshold: l.line });
+        if (f.ruledOut) throw new Error(inj.get(pl.id)?.seasonEnding ? "Out for the season — not expected to play" : "Ruled out — not expected to play");
         const side = f.pOver >= f.pUnder ? "over" : "under";
         const pSide = side === "over" ? f.pOver : f.pUnder;
         Object.assign(row, {
@@ -120,7 +121,7 @@ export default function Predict({ query }: { query: URLSearchParams }) {
       )}
 
       <Section title="Model board">
-        <p className="-mt-1 px-1 text-[11px] text-ink-400">Starters' main stat in the next 48 hours, strongest model leans first. Line = nearest half-unit to the projection.</p>
+        <p className="-mt-1 px-1 text-[11px] text-ink-400">Starters' main stat in the next 48 hours vs each player's typical line (median of his last 10 games), strongest calls first. Players ruled out are left off.</p>
         {!board.data ? (
           <Loading rows={2} />
         ) : board.data.length ? (
@@ -151,6 +152,11 @@ export default function Predict({ query }: { query: URLSearchParams }) {
           </ListCard>
         ) : (
           <div className="card card-pad text-sm text-ink-400">No games in the next 48 hours{sport ? ` for ${SPORTS[sport].name}` : ""}.</div>
+        )}
+        {board.data && board.data.filter((b) => b.f.pUnder > b.f.pOver).length > board.data.length / 2 && (
+          <p className="px-1 text-[11px] text-ink-500">
+            Why mostly “Under”? Player stats are skewed — a few big games pull the average up — so most games land under a line set at a player's typical output. The backtest confirms these calls hit at the rates shown.
+          </p>
         )}
         <p className="px-1 text-[11px] text-ink-500">Probabilities are estimates for research, not guarantees or recommendations.</p>
       </Section>

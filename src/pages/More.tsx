@@ -5,6 +5,7 @@ const GROUPS: { label: string; items: { href: string; label: string; sub: string
   {
     label: "Research",
     items: [
+      { href: "/news", label: "Sports News", sub: "Latest headlines and injury updates", icon: ICONS.news },
       { href: "/players", label: "Player Research", sub: "Profiles, game logs, splits, injuries", icon: ICONS.players },
       { href: "/stats", label: "Player Statistics", sub: "League-wide stat leaders", icon: ICONS.stats },
       { href: "/teams", label: "Team Analytics", sub: "Offensive & defensive rankings", icon: ICONS.teams },

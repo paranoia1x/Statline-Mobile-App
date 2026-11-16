@@ -27,6 +27,7 @@ const Vault = lazy(() => import("@/pages/Vault"));
 const Tracker = lazy(() => import("@/pages/Tracker"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const Search = lazy(() => import("@/pages/Search"));
+const News = lazy(() => import("@/pages/News"));
 
 type Tab = "home" | "live" | "predict" | "analyze" | "more";
 interface Screen {
@@ -56,6 +57,7 @@ const SCREENS: Screen[] = [
   { pattern: "/vault", tab: "more", title: "Research Vault", render: (_p, q) => <Vault openId={q.get("open") ?? undefined} /> },
   { pattern: "/tracker", tab: "more", title: "Performance Tracker", render: () => <Tracker /> },
   { pattern: "/settings", tab: "more", title: "Settings", render: () => <Settings /> },
+  { pattern: "/news", tab: "home", title: "Sports News", sportBar: true, render: () => <News /> },
   { pattern: "/search", tab: "home", title: "Search", render: (_p, q) => <Search initial={q.get("q") ?? ""} /> },
 ];
 

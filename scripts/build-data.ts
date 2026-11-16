@@ -21,6 +21,8 @@ import { packLogs, packTeamLogs, SNAPSHOT_VERSION, type SnapshotMeta, type Sport
 import { runBacktest, setPrecomputedBacktest, type BacktestResult } from "@/lib/engine/evaluation";
 import { topPlays, type Play } from "@/lib/server/top-plays";
 import { SPORTS } from "@/lib/sports";
+import { espnJson } from "../server/espn/client";
+import { mergeNews, newsUrl, parseNews } from "@/lib/news";
 import { SPORT_IDS, type PlayerGameLog, type SportId } from "@/lib/types";
 
 const OUT = path.join(process.cwd(), "public", "data");
@@ -144,6 +146,10 @@ async function main() {
     log(`${s.sport}: ${up.plays.length} plays from ${up.considered} calls (${((Date.now() - t0) / 1000).toFixed(0)}s)`);
   }
   fs.writeFileSync(path.join(OUT, "plays.json"), JSON.stringify({ generatedAt: new Date().toISOString(), sports: plays, trackRecord }));
+  // latest headlines (the app fetches fresh ones from ESPN too; this is the offline fallback)
+  const news = mergeNews(await Promise.all(SPORT_IDS.map((s) => espnJson<unknown>(newsUrl(s, 30), 0).then((b) => parseNews(s, b)).catch(() => []))));
+  fs.writeFileSync(path.join(OUT, "news.json"), JSON.stringify({ generatedAt: new Date().toISOString(), items: news.slice(0, 150) }));
+  log(`news: ${news.length} headlines`);
   fs.writeFileSync(path.join(OUT, "meta.json"), JSON.stringify(meta, null, 1));
   log("done →", OUT);
   process.exit(0);

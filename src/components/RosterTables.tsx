@@ -83,7 +83,7 @@ export function RosterTables({
                               <span className="block truncate text-ink-100">{r.player.name}</span>
                               <span className="flex items-center gap-1.5 text-[11px] text-ink-400">
                                 {r.player.position} · #{r.player.jersey}
-                                {r.player.injury && <AvailabilityBadge status={r.player.injury.status} description={r.player.injury.description} />}
+                                {r.player.injury && <AvailabilityBadge status={r.player.injury.status} description={r.player.injury.description} seasonEnding={r.player.injury.seasonEnding} returns={r.player.injury.expectedReturn} />}
                               </span>
                             </span>
                           </Link>

@@ -47,6 +47,10 @@ export interface Injury {
   description: string;
   updatedAt: string;
   expectedReturn: string | null;
+  /** Ruled out for the rest of the season (ESPN "OFS", season-ending surgery, etc.). */
+  seasonEnding?: boolean;
+  /** Latest news blurb about the injury, when the source provides one. */
+  note?: string | null;
 }
 
 export type GameStatus = "scheduled" | "final";

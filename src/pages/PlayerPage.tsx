@@ -79,12 +79,13 @@ export default function PlayerPage({ id }: { id: string }) {
         </div>
         <div className="mt-3 flex flex-wrap gap-1.5">
           <Badge>{sport.name}</Badge>
-          <AvailabilityBadge status={injury?.status ?? "active"} description={injury?.description} />
+          <AvailabilityBadge status={injury?.status ?? "active"} description={injury?.description} seasonEnding={injury?.seasonEnding} returns={injury?.expectedReturn} />
         </div>
         {injury && (
           <div className="mt-2 text-xs text-ink-300">
             Injury: <span className="text-ink-100">{injury.description}</span> · updated {fmtDate(injury.updatedAt)}
             {injury.expectedReturn && <> · return ~{fmtDate(injury.expectedReturn)}</>}
+            {injury.note && <div className="mt-1 text-ink-400">Latest: {injury.note}</div>}
           </div>
         )}
         <div className="mt-4 rounded-xl border border-ink-700 bg-ink-850 p-3">

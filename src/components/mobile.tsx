@@ -17,6 +17,7 @@ export const ICONS = {
   plays: "M12 2l3 6.5 7 .9-5.2 4.8 1.4 7L12 17.8 5.8 21.2l1.4-7L2 9.4l7-.9z",
   parlay: "M4 6h16M4 12h16M4 18h10M18 16l2 2 3-4",
   vault: "M4 5h16v14H4zM4 9h16M9 13h6",
+  news: "M4 5h13v14H5a1 1 0 01-1-1zM17 9h3v9a1 1 0 01-1 1h-2M7 9h7M7 12h7M7 15h4",
   tracker: "M3 17l6-6 4 4 8-8M15 7h6v6",
   settings: "M12 15a3 3 0 100-6 3 3 0 000 6zM19 12h2M3 12h2M12 3v2M12 19v2M17 7l1.4-1.4M5.6 18.4L7 17M17 17l1.4 1.4M5.6 5.6L7 7",
   chevron: "M9 6l6 6-6 6",
