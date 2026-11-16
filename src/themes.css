@@ -1,0 +1,233 @@
+/* Generated theme variables (see src/lib/appearance.ts). Colours are "r g b" triplets for Tailwind alpha support. */
+
+:root {
+  --brand: var(--acc-base); --brand-deep: var(--acc-deep);
+}
+
+:root,
+:root[data-theme="midnight"],
+:root[data-theme="auto"] {
+  --ink-950: 6 4 11;
+  --ink-900: 13 10 19;
+  --ink-850: 18 15 25;
+  --ink-800: 24 20 31;
+  --ink-750: 30 25 38;
+  --ink-700: 39 33 47;
+  --ink-600: 51 44 61;
+  --ink-500: 74 68 86;
+  --ink-400: 111 106 125;
+  --ink-300: 157 152 170;
+  --ink-200: 200 196 210;
+  --ink-100: 233 231 239;
+  --fg-max: 255 255 255;
+  --pos: 34 197 94;
+  --neg: 239 68 68;
+  --warn: 245 158 11;
+  --info: 143 179 255;
+  --aiblue: 91 141 239;
+  --grid: #27212f; --axis: #6b7180; --chart-text: #c5c9d2;
+  --brand-light: var(--acc-light); --brand-bright: var(--acc-bright); --ai: var(--acc-ai); --hover-tint: rgb(255 255 255 / 0.04);
+  color-scheme: dark;
+}
+
+:root[data-theme="carbon"] {
+  --ink-950: 10 10 11;
+  --ink-900: 17 17 19;
+  --ink-850: 22 22 24;
+  --ink-800: 28 28 31;
+  --ink-750: 34 34 38;
+  --ink-700: 44 44 49;
+  --ink-600: 58 58 64;
+  --ink-500: 82 82 90;
+  --ink-400: 119 119 127;
+  --ink-300: 161 161 169;
+  --ink-200: 202 202 208;
+  --ink-100: 236 236 239;
+  --fg-max: 255 255 255;
+  --pos: 34 197 94;
+  --neg: 239 68 68;
+  --warn: 245 158 11;
+  --info: 143 179 255;
+  --aiblue: 91 141 239;
+  --grid: #2c2c31; --axis: #71717a; --chart-text: #c9c9cf;
+  --brand-light: var(--acc-light); --brand-bright: var(--acc-bright); --ai: var(--acc-ai); --hover-tint: rgb(255 255 255 / 0.04);
+  color-scheme: dark;
+}
+
+:root[data-theme="navy"] {
+  --ink-950: 5 10 20;
+  --ink-900: 10 18 32;
+  --ink-850: 14 23 39;
+  --ink-800: 19 29 48;
+  --ink-750: 24 36 58;
+  --ink-700: 33 48 73;
+  --ink-600: 44 61 90;
+  --ink-500: 68 86 115;
+  --ink-400: 107 124 152;
+  --ink-300: 152 166 189;
+  --ink-200: 196 206 221;
+  --ink-100: 230 235 243;
+  --fg-max: 255 255 255;
+  --pos: 34 197 94;
+  --neg: 239 68 68;
+  --warn: 245 158 11;
+  --info: 143 179 255;
+  --aiblue: 91 141 239;
+  --grid: #213049; --axis: #6b7c98; --chart-text: #c4cedd;
+  --brand-light: var(--acc-light); --brand-bright: var(--acc-bright); --ai: var(--acc-ai); --hover-tint: rgb(255 255 255 / 0.04);
+  color-scheme: dark;
+}
+
+:root[data-theme="oled"] {
+  --ink-950: 0 0 0;
+  --ink-900: 5 5 5;
+  --ink-850: 10 10 10;
+  --ink-800: 17 17 17;
+  --ink-750: 23 23 23;
+  --ink-700: 34 34 34;
+  --ink-600: 46 46 46;
+  --ink-500: 72 72 72;
+  --ink-400: 110 110 110;
+  --ink-300: 156 156 156;
+  --ink-200: 200 200 200;
+  --ink-100: 236 236 236;
+  --fg-max: 255 255 255;
+  --pos: 34 197 94;
+  --neg: 239 68 68;
+  --warn: 245 158 11;
+  --info: 143 179 255;
+  --aiblue: 91 141 239;
+  --grid: #222222; --axis: #6e6e6e; --chart-text: #c8c8c8;
+  --brand-light: var(--acc-light); --brand-bright: var(--acc-bright); --ai: var(--acc-ai); --hover-tint: rgb(255 255 255 / 0.04);
+  color-scheme: dark;
+}
+
+:root[data-theme="dim"] {
+  --ink-950: 28 33 40;
+  --ink-900: 34 39 46;
+  --ink-850: 39 44 52;
+  --ink-800: 45 51 59;
+  --ink-750: 50 57 66;
+  --ink-700: 55 62 71;
+  --ink-600: 68 76 86;
+  --ink-500: 84 93 104;
+  --ink-400: 118 131 144;
+  --ink-300: 144 157 171;
+  --ink-200: 173 186 199;
+  --ink-100: 205 217 229;
+  --fg-max: 230 237 243;
+  --pos: 34 197 94;
+  --neg: 239 68 68;
+  --warn: 245 158 11;
+  --info: 143 179 255;
+  --aiblue: 91 141 239;
+  --grid: #373e47; --axis: #768390; --chart-text: #adbac7;
+  --brand-light: var(--acc-light); --brand-bright: var(--acc-bright); --ai: var(--acc-ai); --hover-tint: rgb(255 255 255 / 0.04);
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --ink-950: 244 243 248;
+  --ink-900: 255 255 255;
+  --ink-850: 247 246 251;
+  --ink-800: 238 237 243;
+  --ink-750: 230 228 238;
+  --ink-700: 221 218 230;
+  --ink-600: 203 199 214;
+  --ink-500: 169 164 184;
+  --ink-400: 110 105 132;
+  --ink-300: 82 77 104;
+  --ink-200: 55 50 75;
+  --ink-100: 31 27 46;
+  --fg-max: 15 12 24;
+  --pos: 21 128 61;
+  --neg: 220 38 38;
+  --warn: 180 83 9;
+  --info: 37 86 201;
+  --aiblue: 47 111 237;
+  --grid: #e6e4ee; --axis: #75708a; --chart-text: #37324b;
+  --brand-light: var(--acc-deep); --brand-bright: var(--acc-base); --ai: var(--acc-base); --hover-tint: rgb(0 0 0 / 0.04);
+  color-scheme: light;
+}
+
+:root[data-theme="paper"] {
+  --ink-950: 245 241 232;
+  --ink-900: 255 253 248;
+  --ink-850: 250 246 238;
+  --ink-800: 239 233 220;
+  --ink-750: 233 226 210;
+  --ink-700: 227 220 203;
+  --ink-600: 210 200 178;
+  --ink-500: 176 165 140;
+  --ink-400: 118 107 85;
+  --ink-300: 90 80 62;
+  --ink-200: 63 55 42;
+  --ink-100: 43 36 24;
+  --fg-max: 26 20 11;
+  --pos: 21 128 61;
+  --neg: 220 38 38;
+  --warn: 180 83 9;
+  --info: 37 86 201;
+  --aiblue: 47 111 237;
+  --grid: #e9e2d2; --axis: #766b55; --chart-text: #3f372a;
+  --brand-light: var(--acc-deep); --brand-bright: var(--acc-base); --ai: var(--acc-base); --hover-tint: rgb(0 0 0 / 0.04);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-theme="auto"] {
+    --ink-950: 244 243 248;
+    --ink-900: 255 255 255;
+    --ink-850: 247 246 251;
+    --ink-800: 238 237 243;
+    --ink-750: 230 228 238;
+    --ink-700: 221 218 230;
+    --ink-600: 203 199 214;
+    --ink-500: 169 164 184;
+    --ink-400: 110 105 132;
+    --ink-300: 82 77 104;
+    --ink-200: 55 50 75;
+    --ink-100: 31 27 46;
+    --fg-max: 15 12 24;
+    --pos: 21 128 61;
+    --neg: 220 38 38;
+    --warn: 180 83 9;
+    --info: 37 86 201;
+    --aiblue: 47 111 237;
+    --grid: #e6e4ee; --axis: #75708a; --chart-text: #37324b;
+    --brand-light: var(--acc-deep); --brand-bright: var(--acc-base); --ai: var(--acc-base); --hover-tint: rgb(0 0 0 / 0.04);
+    color-scheme: light;
+  }
+}
+
+:root,
+:root[data-accent="violet"] {
+  --acc-base: 124 22 227; --acc-light: 196 161 255; --acc-bright: 163 92 255; --acc-deep: 90 11 176; --acc-ai: 139 44 245;
+}
+
+:root[data-accent="blue"] {
+  --acc-base: 47 111 237; --acc-light: 168 198 255; --acc-bright: 91 147 255; --acc-deep: 29 79 196; --acc-ai: 59 130 246;
+}
+
+:root[data-accent="teal"] {
+  --acc-base: 13 148 136; --acc-light: 140 230 220; --acc-bright: 45 212 191; --acc-deep: 15 118 110; --acc-ai: 20 184 166;
+}
+
+:root[data-accent="green"] {
+  --acc-base: 22 163 74; --acc-light: 155 232 180; --acc-bright: 52 211 110; --acc-deep: 21 128 61; --acc-ai: 34 197 94;
+}
+
+:root[data-accent="orange"] {
+  --acc-base: 234 88 12; --acc-light: 253 187 143; --acc-bright: 251 125 60; --acc-deep: 194 65 12; --acc-ai: 249 115 22;
+}
+
+:root[data-accent="rose"] {
+  --acc-base: 225 29 72; --acc-light: 253 164 185; --acc-bright: 251 79 118; --acc-deep: 190 18 60; --acc-ai: 244 63 94;
+}
+
+:root[data-accent="gold"] {
+  --acc-base: 202 138 4; --acc-light: 253 230 138; --acc-bright: 234 179 8; --acc-deep: 161 98 7; --acc-ai: 234 179 8;
+}
+
+:root[data-size="sm"] { font-size: 14px; }
+:root[data-size="lg"] { font-size: 17.5px; }
