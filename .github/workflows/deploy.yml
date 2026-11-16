@@ -1,8 +1,10 @@
 name: Build data & publish app
 
-# Refreshes the stats snapshots from ESPN every 2 hours and publishes the app to GitHub Pages
-# (gh-pages branch). Live scores in the app come straight from ESPN, so they stay current
-# between runs.
+# Refreshes the stats snapshots from ESPN every 2 hours and publishes the app to GitHub Pages.
+# Works with either Pages setting (Settings -> Pages -> Source):
+#   - "GitHub Actions"                       -> the deploy job below publishes it
+#   - "Deploy from a branch" -> gh-pages /root -> the gh-pages push publishes it
+# Live scores in the app come straight from ESPN, so they stay current between runs.
 on:
   push:
     branches: [main]
@@ -12,6 +14,8 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 concurrency:
   group: publish
@@ -64,3 +68,21 @@ jobs:
           git add -A
           git commit -q -m "Publish $(date -u +%Y-%m-%dT%H:%MZ) from ${GITHUB_SHA::7}"
           git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" gh-pages
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  # Used when Settings -> Pages -> Source is "GitHub Actions". If Pages is set to a branch
+  # instead, this step is skipped over (the gh-pages push above already published the app).
+  deploy:
+    needs: publish
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

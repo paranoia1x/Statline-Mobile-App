@@ -51,7 +51,7 @@ npm run build     # production build in dist/
 
 - `npm test` includes a check that the engine gives **identical forecasts** on the phone snapshot and on the source data.
 - Themes are generated from `scripts/gen-themes.py`.
-- The Action publishes the built app to the `gh-pages` branch as a single commit each time (no history growth). In **Settings → Pages**, the source should be **Deploy from a branch → gh-pages / (root)**.
+- Publishing: in **Settings → Pages**, set **Source** to **GitHub Actions** (recommended) — or **Deploy from a branch → gh-pages / (root)**. The Action supports both: it deploys through GitHub Pages directly, and also pushes the built app to `gh-pages` as a single commit (no history growth).
 
 ## Credits
 
