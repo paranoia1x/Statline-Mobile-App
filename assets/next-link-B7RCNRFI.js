@@ -1,0 +1,1 @@
+import{j as o,aj as s}from"./index-B92zJqSd.js";function f({href:r,children:e,prefetch:a,scroll:p,replace:l,...t}){const n=/^https?:/.test(r);return o.jsx("a",{href:s(r),...n?{target:"_blank",rel:"noopener noreferrer"}:{},...t,children:e})}export{f as L};

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en" data-theme="midnight" data-accent="violet" data-size="md">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>STATLINE Sports Analytics</title>
+    <meta name="description" content="Player & team stats, AI hit probabilities, pick and parlay analyzers. Track • Analyze • Win." />
+    <meta name="theme-color" content="#06040b" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="STATLINE" />
+    <link rel="icon" href="icons/favicon.png" type="image/png" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <script>
+      // apply the saved appearance before first paint (no flash of the default theme)
+      try {
+        var a = JSON.parse(localStorage.getItem("sl.appearance") || "null");
+        if (a) { var d = document.documentElement; d.dataset.theme = a.theme; d.dataset.accent = a.accent; d.dataset.size = a.size;
+          if (a.vars) for (var k in a.vars) d.style.setProperty(k, a.vars[k]); }
+      } catch (e) {}
+    </script>
+    <script type="module" crossorigin src="./assets/index-B92zJqSd.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BYfyeQcp.css">
+  <link rel="manifest" href="./manifest.webmanifest"></head>
+  <body>
+    <div id="root"></div>
+    <noscript><p style="padding:24px;font-family:sans-serif">STATLINE needs JavaScript turned on.</p></noscript>
+  </body>
+</html>
