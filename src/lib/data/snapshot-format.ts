@@ -81,6 +81,7 @@ const opp = (g: Game, home: boolean) => (home ? g.awayTeamId : g.homeTeamId);
 
 export function unpackLogs(s: SportSnapshot): PlayerGameLog[] {
   const out: PlayerGameLog[] = [];
+  const hasNflRushingTds = s.sport === "nfl" && s.statKeys.includes("rushTd");
   for (const row of s.logs) {
     const p = s.players[row[0]!];
     const g = s.games[row[1]!];
@@ -91,6 +92,10 @@ export function unpackLogs(s: SportSnapshot): PlayerGameLog[] {
       const v = row[5 + i];
       if (v != null) stats[k] = v;
     });
+    // ESPN omits the rushing row for players who recorded no carries.
+    if (hasNflRushingTds && (p.positionGroup === "QB" || p.positionGroup === "RB") && stats.rushTd == null && !stats.carries) {
+      stats.rushTd = 0;
+    }
     out.push({
       playerId: p.id, gameId: g.id, sport: s.sport, season: g.season, date: g.date,
       teamId: home ? g.homeTeamId : g.awayTeamId, opponentId: opp(g, home), home, started: row[3] === 1, minutes: row[4] ?? 0, stats,

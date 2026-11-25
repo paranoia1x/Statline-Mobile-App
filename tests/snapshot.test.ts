@@ -1,11 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 process.env.DEMO_NOW = "2026-11-14T12:00:00Z";
-import { setProvider } from "../src/lib/data";
+import { setProvider, visibleStats } from "../src/lib/data";
 import { SnapshotProvider } from "../src/lib/data/snapshot";
 import { packLogs, packTeamLogs, SNAPSHOT_VERSION, type SportSnapshot } from "../src/lib/data/snapshot-format";
 import { forecastPlayerStat } from "../src/lib/engine/service";
 import { forecastGame } from "../src/lib/engine/team";
+import { aggregateStat } from "../src/lib/sports";
 import { SPORT_IDS, type SportId } from "../src/lib/types";
 import { DemoProvider } from "./fixtures/demo";
 
@@ -48,6 +49,41 @@ test("snapshot round-trip keeps every player and team game log", async () => {
     const ta = await demo.getTeamLogs({ sport });
     const tb = await snap.getTeamLogs({ sport });
     assert.equal(tb.length, ta.length, `${sport} team logs`);
+  }
+});
+
+test("QB and RB rushing TD averages include games with no carries", async () => {
+  const nfl = await snapshotOf("nfl");
+  const rushTd = 5 + nfl.statKeys.indexOf("rushTd");
+  const carries = 5 + nfl.statKeys.indexOf("carries");
+  const positions = ["QB", "RB"];
+
+  for (const position of positions) {
+    const playerIndex = nfl.players.findIndex((player) => player.positionGroup === position);
+    const logs = nfl.logs.filter(([index]) => index === playerIndex).slice(0, 3);
+    assert.equal(logs.length, 3);
+    logs[0]![rushTd] = 2;
+    logs[0]![carries] = 5;
+    logs[1]![rushTd] = null;
+    logs[1]![carries] = null;
+    logs[2]![rushTd] = null;
+    logs[2]![carries] = 3;
+  }
+
+  const provider = new SnapshotProvider("");
+  provider.attach(nfl);
+  setProvider(provider);
+  try {
+    for (const position of positions) {
+      const player = nfl.players.find((player) => player.positionGroup === position)!;
+      const stat = visibleStats("nfl", position).find(({ key }) => key === "rushTd");
+      assert.ok(stat, `Rushing touchdowns should be visible for ${position}`);
+      const logs = (await provider.getPlayerLogs(player.id)).slice(0, 3);
+      assert.deepEqual(logs.map(({ stats }) => stats.rushTd), [2, 0, undefined]);
+      assert.equal(aggregateStat(stat, logs), 1);
+    }
+  } finally {
+    setProvider(snap);
   }
 });
 
