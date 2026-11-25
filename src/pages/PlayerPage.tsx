@@ -14,6 +14,8 @@ import { PlayerCharts, type LogRow } from "@/components/PlayerCharts";
 import { RecordRecentPlayer, SaveToVault } from "@/components/actions";
 import { ErrorBox, Loading, Section } from "@/components/mobile";
 import { AvailabilityBadge, Badge, EmptyState, Warning } from "@/components/ui";
+import { getPlayerFantasy } from "@/lib/fantasy/board";
+import { ComponentBars, FactsGrid, GradePill, StatLine, TierBadge } from "@/components/fantasy";
 
 function cellFmt(v: number | null, f: Parameters<typeof formatStat>[1]) {
   if (v != null && Number.isInteger(v) && f !== "pct" && f !== "avg3") return String(v);
@@ -113,6 +115,8 @@ export default function PlayerPage({ id }: { id: string }) {
           </div>
         </div>
       </section>
+
+      <FantasyCard id={player.id} />
 
       {roleNote && <Warning>Recent role change — {roleNote.title.toLowerCase()}: {roleNote.detail}</Warning>}
 
@@ -265,5 +269,41 @@ export default function PlayerPage({ id }: { id: string }) {
         <p className="px-1 text-[11px] text-ink-500">Avg {sport.playingTimeShort} last 10: {logs.length ? mean(logs.slice(-10).map((l) => l.minutes)).toFixed(1) : "—"}</p>
       </Section>
     </div>
+  );
+}
+
+/** Next-game fantasy projection (default scoring format for the sport). */
+function FantasyCard({ id }: { id: string }) {
+  const f = useData(() => getPlayerFantasy(id).catch(() => null), [id]);
+  if (!f.data) return null;
+  const { row, board, line } = f.data;
+  return (
+    <Section title="Fantasy projection" action={<a href="#/fantasy" className="text-brand-light">All rankings →</a>}>
+      <div className="card space-y-3 p-3.5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="num text-3xl font-semibold leading-none text-white">{row.status === "out" ? "Out" : row.points.toFixed(1)}</div>
+            <div className="mt-1 text-xs text-ink-400">
+              {board.format.label} pts · range {row.floor.toFixed(0)}–{row.ceiling.toFixed(0)} · {row.home ? "vs" : "@"} {row.opponent.abbreviation}
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-1">
+            <TierBadge tier={row.tier} />
+            <span className="text-[11px] text-ink-300">
+              {row.groupLabel}{row.rank} of {row.of}
+            </span>
+            {row.matchup && <GradePill grade={row.matchup.grade} />}
+          </div>
+        </div>
+        {line.length > 0 && <StatLine items={line} />}
+        <FactsGrid row={row} />
+        <details>
+          <summary className="cursor-pointer text-xs font-medium text-brand-light">What moves the projection</summary>
+          <div className="mt-2">
+            <ComponentBars row={row} />
+          </div>
+        </details>
+      </div>
+    </Section>
   );
 }

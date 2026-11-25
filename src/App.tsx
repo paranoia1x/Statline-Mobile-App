@@ -28,6 +28,7 @@ const Tracker = lazy(() => import("@/pages/Tracker"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const Search = lazy(() => import("@/pages/Search"));
 const News = lazy(() => import("@/pages/News"));
+const Fantasy = lazy(() => import("@/pages/Fantasy"));
 
 type Tab = "home" | "live" | "predict" | "analyze" | "more";
 interface Screen {
@@ -46,6 +47,7 @@ const SCREENS: Screen[] = [
   { pattern: "/analyzer", tab: "analyze", render: () => <Analyze tab="picks" /> },
   { pattern: "/parlay", tab: "analyze", render: () => <Analyze tab="parlay" /> },
   { pattern: "/more", tab: "more", render: () => <More /> },
+  { pattern: "/fantasy", tab: "predict", title: "Fantasy", sportBar: true, render: (_p, q) => <Fantasy query={q} /> },
   { pattern: "/plays", tab: "home", title: "Top Plays", sportBar: true, render: () => <Plays /> },
   { pattern: "/players", tab: "more", title: "Players", sportBar: true, render: (_p, q) => <Players query={q} /> },
   { pattern: "/players/:id", tab: "more", title: "Player", render: (p) => <PlayerPage id={p.id} /> },

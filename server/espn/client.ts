@@ -40,7 +40,7 @@ export class EspnError extends Error {}
 export async function espnJson<T>(url: string, ttlMs: number, slim?: (body: any) => unknown): Promise<T> {
   const u = new URL(url);
   if (u.protocol !== "https:" || !ESPN_API_HOSTS.has(u.hostname)) throw new EspnError(`Host not allowed: ${u.hostname}`);
-  const key = crypto.createHash("sha1").update(u.toString() + (slim ? "#slim3" : "")).digest("hex");
+  const key = crypto.createHash("sha1").update(u.toString() + (slim ? "#slim4" : "")).digest("hex");
   const now = Date.now();
   const mem = memory.get(key);
   if (mem && now - mem.at < ttlMs) return mem.body as T;

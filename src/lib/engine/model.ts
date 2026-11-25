@@ -12,5 +12,11 @@ export const MODEL_VERSIONS = [
     description:
       "Default line is the player's typical line (median of the last 10 games) instead of the model's own projection. Baseline weights retuned on the walk-forward backtest (slower-moving recent form, more season weight). NBA projections account for key teammates who are out. Players ruled out are flagged.",
   },
+  {
+    id: "stat-forecast-1.2.0",
+    released: "2026-11-25",
+    description:
+      "Soccer forecasts use the betting market's implied team total (backtest: accuracy 77.8% → 78.7%). Forecasts show the market total for every sport when a line exists. Fantasy projections added (defense vs position, implied team totals, NFL weather).",
+  },
 ];
 export const CURRENT_MODEL_VERSION = MODEL_VERSIONS[MODEL_VERSIONS.length - 1].id;

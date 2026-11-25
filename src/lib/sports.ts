@@ -154,6 +154,7 @@ const nfl: SportDef = {
     { id: "RB", label: "Running back" },
     { id: "WR", label: "Wide receiver" },
     { id: "TE", label: "Tight end" },
+    { id: "K", label: "Kicker" },
   ],
   stats: [
     { key: "passYds", label: "Passing yards", short: "PASS YDS", format: "dec1", groups: ["QB"], forecastable: true, dist: "continuous", dim: "pass" },
@@ -169,9 +170,12 @@ const nfl: SportDef = {
     { key: "td", label: "Scrimmage touchdowns", short: "TD", format: "dec2", groups: ["RB", "WR", "TE"], forecastable: true, dist: "count", dim: "scoring" },
     { key: "cmpPct", label: "Completion %", short: "CMP%", format: "pct", groups: ["QB"], forecastable: false, dist: "continuous", ratio: { num: "cmp", den: "att" } },
     { key: "ypc", label: "Yards per carry", short: "YPC", format: "dec1", groups: ["RB"], forecastable: false, dist: "continuous", ratio: { num: "rushYds", den: "carries" } },
+    { key: "fgm", label: "Field goals made", short: "FGM", format: "dec1", groups: ["K"], forecastable: true, dist: "count", dim: "scoring" },
+    { key: "xpm", label: "Extra points made", short: "XPM", format: "dec1", groups: ["K"], forecastable: true, dist: "count", dim: "scoring" },
+    { key: "kickPts", label: "Kicking points", short: "K PTS", format: "dec1", groups: ["K"], forecastable: true, dist: "count", dim: "scoring" },
     { key: "usage", label: "Opportunity share %", short: "OPP%", format: "dec1", groups: ["RB", "WR", "TE"], forecastable: false, dist: "continuous" },
   ],
-  headline: { QB: ["passYds", "passTd", "rushYds"], RB: ["rushYds", "carries", "rec"], WR: ["recYds", "rec", "targets"], TE: ["recYds", "rec", "targets"] },
+  headline: { QB: ["passYds", "passTd", "rushYds"], RB: ["rushYds", "carries", "rec"], WR: ["recYds", "rec", "targets"], TE: ["recYds", "rec", "targets"], K: ["kickPts", "fgm", "xpm"] },
   dims: [
     { id: "pass", label: "Passing yards allowed", source: "allowed", key: "passYds" },
     { id: "passvolume", label: "Opponent pass attempts faced", source: "allowed", key: "passAtt" },

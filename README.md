@@ -19,6 +19,8 @@ It opens full-screen with the STATLINE icon, like a regular app.
 
 ## What's different from the desktop version
 
+- **Fantasy** (Predict tab, Home and More): projected fantasy points for every starter on the upcoming slate — an NFL week or a day of NBA/NHL/soccer games — ranked by position with Start / Flex / Bench tiers, a floor–ceiling range and the projected stat line. Scoring formats: NFL PPR, Half PPR and Standard (QB, RB, WR, TE, K, D/ST); NBA DraftKings, FanDuel and ESPN points; NHL DraftKings and FanDuel; MLB and soccer DraftKings. Each projection shows what moved it: **defense vs position** (fantasy points the opponent allows to that position, with a Great → Very tough grade), **team offense and opponent defense ranks**, the **betting-market implied team total**, **game-time weather** at outdoor NFL stadiums (wind, rain/snow, cold), injuries and key teammates out.
+- **How accurate the fantasy numbers are:** the app shows a walk-forward backtest for each format — past games projected only from earlier data, scored on the most recent games. Average miss vs simply using season averages (Nov 2026, held-out games): NFL PPR 4.66 vs 4.88 pts, NBA DK 7.38 vs 7.47, NHL DK 4.85 vs 4.92, soccer 2.89 vs 3.17; NFL start/sit (picking the higher scorer of two players at a position) 64% vs 63%.
 - **Bottom tab bar** — Home, Live, Predict, Analyze, More — with bigger tap targets. Inner screens get a back button.
 - **Home** puts live games, today's Top Plays and the main tools first.
 - **Matchups** open on a *Players* tab with both rosters and their stats; Preview, Compare and History are one tap away.
@@ -35,6 +37,7 @@ It opens full-screen with the STATLINE icon, like a regular app.
 
 - **Box scores, schedules, rosters and injuries:** a GitHub Action (`.github/workflows/deploy.yml`) syncs ESPN's public API **every 2 hours**, packs each sport into a small file (about 0.2 MB compressed per sport), and publishes the app. Box scores are cached between runs, so each run only downloads new games.
 - **The heavy work is done ahead of time:** the same Action runs the model's walk-forward backtest (calibration and track record) and computes Top Plays, including the graded results for the last 7 days.
+- **Betting lines and weather:** spreads, totals and moneylines come from ESPN's scoreboards (closing lines for finished games, so they can be backtested). Game-time wind, precipitation and temperature for outdoor NFL stadiums come from [Open-Meteo](https://open-meteo.com) (free, no key, open data) during the data job; ESPN's own forecast is the fallback.
 - **Live scores** come straight from ESPN's scoreboard on your phone, refreshing every 20 seconds while games are on. If ESPN can't be reached, the Live tab says so and shows the schedule and final scores from the last update.
 - ESPN's API is public but unofficial — fine for personal research; a licensed feed is needed for commercial use.
 
@@ -52,6 +55,7 @@ npm test          # parsers, verdicts, appearance, and snapshot-vs-source engine
 npm run build     # production build in dist/
 ```
 
+- `npx tsx scripts/tune-fantasy.ts [sport]` and `npx tsx scripts/tune-props.ts [sport]` re-check the fantasy and player-stat model settings on the real snapshots in `public/data` (run `npm run data` first). Behind an HTTPS proxy, run Node with `NODE_USE_ENV_PROXY=1`.
 - `npm test` includes a check that the engine gives **identical forecasts** on the phone snapshot and on the source data.
 - Themes are generated from `scripts/gen-themes.py`.
 - Publishing: **Settings → Pages → Deploy from a branch → gh-pages / (root)**. The Action pushes the built app to `gh-pages` as a single commit each time (no history growth), and GitHub republishes the site automatically.

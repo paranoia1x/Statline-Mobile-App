@@ -1,5 +1,6 @@
 import { getProvider } from "@/lib/data";
 import { teammatesOut } from "./teammates";
+import { gameEnvFor, restFromDates } from "./odds";
 import { SPORTS, statDef } from "@/lib/sports";
 import type { Player, SportId } from "@/lib/types";
 import type { Prediction } from "@/lib/store/types";
@@ -180,6 +181,9 @@ async function backtestPlayer(sport: SportId, player: Player): Promise<BacktestS
       if (prior.length < 8) continue;
       const ctx = await getLeagueContext(sport, target.date);
       const targetGame = await prov.getGame(target.gameId);
+      const teamDates = (await prov.listGames({ teamId: target.teamId, to: target.date })).map((g) => g.date);
+      const gameEnv = targetGame ? gameEnvFor(targetGame, target.teamId, ctx.teams.get(target.teamId)?.scoreFor) : null;
+      const rest = restFromDates(teamDates, target.date);
       for (const stat of head) {
         if (!stat) continue;
         const prevVals = prior.slice(-10).map((l) => l.stats[stat.key]).filter((v): v is number => typeof v === "number");
@@ -190,7 +194,7 @@ async function backtestPlayer(sport: SportId, player: Player): Promise<BacktestS
         const mates = targetGame ? await teammatesOut(player, stat.key, targetGame).catch(() => null) : null;
         const f = computePlayerForecast({
           player, logs: prior, stat, opponentId: target.opponentId, home: target.home, gameId: target.gameId,
-          gameDate: target.date, ctx, injury: null, threshold, dataSource: prov.isDemo ? "demo" : "live", teammatesOut: mates,
+          gameDate: target.date, ctx, injury: null, threshold, dataSource: prov.isDemo ? "demo" : "live", teammatesOut: mates, gameEnv, restDays: rest,
         });
         samples.push({
           sport, statKey: stat.key, playerId: player.id, gameId: target.gameId, date: target.date, threshold,

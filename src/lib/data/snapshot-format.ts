@@ -43,7 +43,7 @@ export interface SnapshotMeta {
   v: number;
   generatedAt: string;
   sports: { sport: SportId; file: string; bytes: number; games: number; finals: number; players: number }[];
-  files: { model: string; plays: string };
+  files: { model: string; plays: string; fantasy?: string };
 }
 
 const r = (v: number) => Math.round(v * 100) / 100;

@@ -13,7 +13,8 @@ import { pct } from "@/lib/format";
 import { LinesPanel, type BoardRow } from "@/components/LinesPanel";
 import { ForecastStudio, type StudioGame } from "@/components/ForecastStudio";
 import { PlayerAvatar, TeamLogo } from "@/components/media";
-import { ListCard, Loading, Section } from "@/components/mobile";
+import { ICONS, ListCard, Loading, Section } from "@/components/mobile";
+import { NavIcon } from "@/components/icons";
 import { ConfidencePill, VerdictBadge } from "@/components/ui";
 
 async function loadStudio(filterSport: SportId | null, q: URLSearchParams) {
@@ -108,6 +109,16 @@ export default function Predict({ query }: { query: URLSearchParams }) {
 
   return (
     <div className="space-y-6">
+      <a href="#/fantasy" className="card flex items-center gap-3 border-brand/30 p-3.5 active:bg-ink-850">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand/15 text-brand-bright">
+          <NavIcon d={ICONS.fantasy} className="h-5 w-5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-ink-100">Fantasy projections</span>
+          <span className="block text-[11px] text-ink-400">Projected points, defense vs position, team totals{sport === "nfl" || !sport ? ", weather" : ""}</span>
+        </span>
+        <NavIcon d={ICONS.chevron} className="h-4 w-4 text-ink-500" />
+      </a>
       <p className="px-1 text-xs leading-relaxed text-ink-400">
         Pick a game and player to see the projected stat, the chance of going over or under a line, confidence, and the reasons for and against. PrizePicks lines you import are used automatically.
       </p>

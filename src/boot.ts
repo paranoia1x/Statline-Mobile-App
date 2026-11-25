@@ -6,6 +6,8 @@ import { setProvider } from "@/lib/data";
 import { SnapshotProvider } from "@/lib/data/snapshot";
 import { setPrecomputedBacktest, type BacktestResult } from "@/lib/engine/evaluation";
 import type { Play } from "@/lib/server/top-plays";
+import type { FantasyAccuracy } from "@/lib/fantasy/backtest";
+import { clearFantasyCache } from "@/lib/fantasy/engine";
 import type { SportId } from "@/lib/types";
 
 export const BASE = import.meta.env.BASE_URL;
@@ -20,6 +22,13 @@ export interface PlaysFile {
 
 let modelP: Promise<BacktestResult[]> | null = null;
 let playsP: Promise<PlaysFile> | null = null;
+let fantasyP: Promise<FantasyFile> | null = null;
+
+export interface FantasyFile {
+  generatedAt: string;
+  /** Walk-forward backtest of the fantasy projections, per sport and scoring format. */
+  accuracy: FantasyAccuracy[];
+}
 
 async function getJson<T>(file: string): Promise<T> {
   const r = await fetch(`${BASE}data/${file}`, { cache: "no-cache" });
@@ -49,6 +58,14 @@ export function loadPlays() {
   }));
 }
 
+/** Fantasy projection accuracy (computed by the data job). Missing on older data → empty. */
+export function loadFantasyModel() {
+  return (fantasyP ??= getJson<FantasyFile>("fantasy.json").catch(() => {
+    fantasyP = null;
+    return { generatedAt: "", accuracy: [] };
+  }));
+}
+
 export async function boot() {
   await Promise.all([provider.loadMeta(), loadModel()]);
 }
@@ -57,4 +74,6 @@ export async function boot() {
 export function resetCaches() {
   modelP = null;
   playsP = null;
+  fantasyP = null;
+  clearFantasyCache();
 }

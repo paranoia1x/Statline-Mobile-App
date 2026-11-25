@@ -18,13 +18,25 @@ export interface CompactPlayerLine {
   startingPitcher?: boolean;
 }
 
+/** Closing betting market from ESPN's pick center: home spread, game total and moneylines. */
+export interface GameOdds {
+  spread: number | null;
+  total: number | null;
+  homeMl: number | null;
+  awayMl: number | null;
+}
+
+/** v2 adds closing odds and extra NFL fantasy stats (fumbles lost, kicking, return/defensive TDs). */
+export const COMPACT_GAME_VERSION = 2;
+
 export interface CompactGame {
-  v: 1;
+  v: number;
   eventId: string;
   sport: SportId;
   home: { teamEspnId: string; score: number; box: Box };
   away: { teamEspnId: string; score: number; box: Box };
   players: CompactPlayerLine[];
+  odds?: GameOdds | null;
 }
 
 const num = (v: unknown): number | null => {
@@ -52,6 +64,23 @@ function teamStats(t: any): Record<string, string> {
     else out[s.name] = s.displayValue ?? s.value;
   }
   return out;
+}
+
+/** Closing line from the summary's pick center (first provider). */
+export function parseOdds(j: any): GameOdds | null {
+  const pc = (j?.pickcenter ?? [])[0];
+  if (!pc) return null;
+  const n = (v: unknown) => {
+    const x = typeof v === "string" ? Number(v.replace(/^[ou]/i, "")) : Number(v);
+    return v == null || v === "" || !Number.isFinite(x) ? null : x;
+  };
+  const o = {
+    spread: n(pc.spread),
+    total: n(pc.overUnder),
+    homeMl: n(pc.homeTeamOdds?.moneyLine ?? pc.moneyline?.home?.close?.odds),
+    awayMl: n(pc.awayTeamOdds?.moneyLine ?? pc.moneyline?.away?.close?.odds),
+  };
+  return o.spread == null && o.total == null && o.homeMl == null ? null : o;
 }
 
 export function parseSummary(sport: SportId, eventId: string, j: any): CompactGame | null {
@@ -102,6 +131,8 @@ export function parseSummary(sport: SportId, eventId: string, j: any): CompactGa
         if (td) (b.thirdConv = td[0]), (b.thirdAtt = td[1]);
         const top = clock(s.possessionTime);
         if (top != null && b.plays) b.secPerPlay = Math.round(((top * 60) / b.plays) * 10) / 10;
+        set(b, "fumblesLost", num(s.fumblesLost));
+        set(b, "defTd", num(s.defensiveTouchdowns));
         break;
       }
       case "mlb": {
@@ -208,6 +239,18 @@ export function parseSummary(sport: SportId, eventId: string, j: any): CompactGa
                 set(s, "recYds", num(v.receivingYards));
                 set(s, "recTd", num(v.receivingTouchdowns));
                 set(s, "targets", num(v.receivingTargets));
+              } else if (grp.name === "fumbles") {
+                set(s, "fumLost", num(v.fumblesLost));
+              } else if (grp.name === "kicking") {
+                const fg = pair(v["fieldGoalsMade/fieldGoalAttempts"]);
+                const xp = pair(v["extraPointsMade/extraPointAttempts"]);
+                if (fg) (s.fgm = fg[0]), (s.fga = fg[1]);
+                if (xp) (s.xpm = xp[0]), (s.xpa = xp[1]);
+                set(s, "fgLong", num(v.longFieldGoalMade));
+                set(s, "kickPts", num(v.totalKickingPoints));
+              } else if (grp.name === "kickReturns" || grp.name === "puntReturns") {
+                const td = num(v.kickReturnTouchdowns ?? v.puntReturnTouchdowns);
+                if (td) s.retTd = (s.retTd ?? 0) + td;
               }
               break;
             }
@@ -259,7 +302,7 @@ export function parseSummary(sport: SportId, eventId: string, j: any): CompactGa
         if (sport === "nfl") {
           const s = line.stats;
           if (s.rushTd != null || s.recTd != null) s.td = (s.rushTd ?? 0) + (s.recTd ?? 0);
-          line.minutes = (s.att ?? 0) + (s.carries ?? 0) + (s.targets ?? 0);
+          line.minutes = (s.att ?? 0) + (s.carries ?? 0) + (s.targets ?? 0) + (s.fga ?? 0) + (s.xpa ?? 0);
           const side = byTeam(tid);
           const opps = side ? (side.box.passAtt ?? 0) + (side.box.rushAtt ?? 0) : 0;
           if (opps && s.att == null) s.usage = Math.round((((s.carries ?? 0) + (s.targets ?? 0)) / opps) * 1000) / 10;
@@ -277,5 +320,5 @@ export function parseSummary(sport: SportId, eventId: string, j: any): CompactGa
       side.box.er = players.filter((p) => p.teamEspnId === opp.teamEspnId && p.stats.er != null).reduce((a, p) => a + p.stats.er, 0);
     }
   }
-  return { v: 1, eventId, sport, home: sides.home, away: sides.away, players };
+  return { v: COMPACT_GAME_VERSION, eventId, sport, home: sides.home, away: sides.away, players, odds: parseOdds(j) };
 }

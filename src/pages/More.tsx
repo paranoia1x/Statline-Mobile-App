@@ -15,6 +15,7 @@ const GROUPS: { label: string; items: { href: string; label: string; sub: string
   {
     label: "AI Tools",
     items: [
+      { href: "/fantasy", label: "Fantasy", sub: "Projected fantasy points, matchups, start/sit", icon: ICONS.fantasy },
       { href: "/predictions", label: "AI Predictions", sub: "Hit chance for any player and line", icon: ICONS.predict },
       { href: "/plays", label: "Top Plays", sub: "The model's strongest calls", icon: ICONS.plays },
       { href: "/analyzer", label: "Pick Analyzer", sub: "Check picks from a screenshot", icon: ICONS.analyze },
