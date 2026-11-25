@@ -88,7 +88,7 @@ export async function forecastPlayerStat(req: ForecastRequest): Promise<{ foreca
   const isFuture = game.status === "scheduled";
   const injury = isFuture ? await p.getInjury(player.id) : null;
   const prior = await positionPrior(player.sport, player.positionGroup, stat.key, game.date);
-  const cal = await getCalibration(player.sport, stat.key);
+  const cal = await getCalibration(player.sport, stat.key, player.positionGroup);
   const mates = await teammatesOut(player, stat.key, game).catch(() => null);
   const teamDates = (await p.listGames({ teamId: player.teamId, to: game.date })).map((g) => g.date);
   const forecast = computePlayerForecast({

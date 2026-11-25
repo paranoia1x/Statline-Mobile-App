@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { fairAmerican, impliedProbability, parseSlip } from "../src/lib/parse/parlay";
+import { americanFromDecimal, fairAmerican, impliedProbability, marketPrice, parseSlip } from "../src/lib/parse/parlay";
 import { generateUniverse } from "./fixtures/demo/generate";
 import type { Team } from "../src/lib/types";
 
@@ -79,4 +79,50 @@ test("odds conversions", () => {
   assert.equal(fairAmerican(0.6), -150);
   assert.equal(fairAmerican(0.4), 150);
   assert.equal(fairAmerican(1), null);
+});
+
+// ---- prediction-market slips (Kalshi / Polymarket) ----
+const nflQb = u.players.find((p) => p.sport === "nfl" && p.positionGroup === "QB")!;
+const nflWr = u.players.find((p) => p.sport === "nfl" && p.positionGroup === "WR" && p.id !== nflQb.id)!;
+const nflRb = u.players.find((p) => p.sport === "nfl" && p.positionGroup === "RB")!;
+
+test("reads a Kalshi combo: N+ lines, market prices and cost / max payout", () => {
+  // as OCR reads the Kalshi share card (including its misread of "COST")
+  const slip = [
+    "3 MARKET COMBO Kalshi",
+    "COSY MAX PAYOUT",
+    "$9.99 $406.50",
+    `${nflQb.name}: 22+ passing completions 58%`,
+    `${nflWr.name}: 6+ receptions 50%`,
+    `${nflRb.name}: 1+ rushing touchdowns 8%`,
+  ].join("\n");
+  const r = parseSlip(slip, dir, ref);
+  assert.deepEqual(r.stake, { cost: 9.99, payout: 406.5 });
+  assert.equal(r.parlayOdds, 3969);
+  assert.equal(r.legs.length, 3);
+  const [a, b, c] = r.legs.map((l) => l.leg as { playerId: string; statKey: string; line: number; side: string });
+  assert.deepEqual([a.playerId, a.statKey, a.line, a.side], [nflQb.id, "cmp", 21.5, "over"]);
+  assert.deepEqual([b.playerId, b.statKey, b.line, b.side], [nflWr.id, "rec", 5.5, "over"]);
+  assert.deepEqual([c.playerId, c.statKey, c.line, c.side], [nflRb.id, "rushTd", 0.5, "over"]);
+  // the market price becomes the leg's fair odds (58% → -138, 50% → -100 i.e. even, 8% → +1150)
+  assert.deepEqual(r.legs.map((l) => l.odds), [-138, -100, 1150]);
+});
+
+test("reads Polymarket-style yes/no prices and touchdown wording", () => {
+  const r = parseSlip(`${nflRb.name} anytime touchdown scorer   No 71¢\n${nflQb.name} pass+rush yds over 265.5   Yes 44¢`, dir, ref);
+  const [td, yds] = r.legs;
+  assert.deepEqual([td.leg.kind === "player" && td.leg.statKey, (td.leg as { line: number }).line, (td.leg as { side: string }).side], ["td", 0.5, "under"]);
+  assert.equal(td.odds, -245);
+  assert.deepEqual([(yds.leg as { statKey: string }).statKey, (yds.leg as { line: number }).line, (yds.leg as { side: string }).side], ["passRushYds", 265.5, "over"]);
+});
+
+test("prediction-market spreads ('win by over 3.5') and stake/payout helpers", () => {
+  const r = parseSlip("Kingsport Knights win by over 1.5 goals  Yes 35%", dir, ref);
+  assert.deepEqual(r.legs[0].leg, { kind: "spread", teamId: "nhl-kpk", line: -1.5 });
+  assert.equal(marketPrice("Yes 58¢"), 0.58);
+  assert.equal(marketPrice("6+ receptions 50%"), 0.5);
+  assert.equal(marketPrice("Over 22.5 -110"), null);
+  assert.equal(americanFromDecimal(2), 100);
+  assert.equal(americanFromDecimal(1.5), -200);
+  assert.deepEqual(parseSlip("Wager $10.00\nTo win $35.00", dir, ref).stake, { cost: 10, payout: 45 });
 });

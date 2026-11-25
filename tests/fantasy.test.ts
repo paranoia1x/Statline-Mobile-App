@@ -82,3 +82,17 @@ test("fantasy board ranks every relevant player with finite projections", async 
   }
   assert.ok(boards > 0, "at least one sport has an upcoming slate");
 });
+
+test("combo and touchdown stats are derived from the box score", async () => {
+  const { deriveStats } = await import("../src/lib/sports");
+  assert.deepEqual(deriveStats("nba", { pts: 20, reb: 8, ast: 5, stl: 2, blk: 1 }), { pts: 20, reb: 8, ast: 5, stl: 2, blk: 1, pr: 28, pa: 25, ra: 13, stocks: 3 });
+  // a QB who didn't run: 0 rushing yards and touchdowns, not missing
+  const qb = deriveStats("nfl", { att: 30, cmp: 20, passYds: 250, passTd: 2 });
+  assert.equal(qb.rushTd, 0);
+  assert.equal(qb.td, 0);
+  assert.equal(qb.passRushYds, 250);
+  const rb = deriveStats("nfl", { carries: 15, rushYds: 70, rushTd: 1, rec: 3, recYds: 20, recTd: 1 });
+  assert.equal(rb.td, 2);
+  assert.equal(rb.rushRecYds, 90);
+  assert.equal(deriveStats("mlb", { hits: 2, runs: 1, rbi: 3 }).hrr, 6);
+});

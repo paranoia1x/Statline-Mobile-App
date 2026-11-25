@@ -24,6 +24,47 @@ export interface ParsedLeg {
 export interface ParsedSlip {
   legs: ParsedLeg[];
   parlayOdds: number | null;
+  /** Stake and payout read from the slip (e.g. Kalshi "Cost $9.99 · Max payout $406.50"). */
+  stake?: { cost: number; payout: number } | null;
+}
+
+/**
+ * Prediction-market price on a line: "58%", "58¢", "Yes 58c" (Kalshi, Polymarket, Novig…).
+ * Returned as a probability 0–1.
+ */
+export function marketPrice(line: string): number | null {
+  const m = [...line.matchAll(/(?:^|\s)(\d{1,2}(?:\.\d)?)\s?(%|¢|c)(?=\s|$|[^A-Za-z0-9])/g)];
+  if (!m.length) return null;
+  const v = Number(m[m.length - 1][1]);
+  return v > 0 && v < 100 ? v / 100 : null;
+}
+const PRICE_RE = /(?:^|\s)\d{1,2}(?:\.\d)?\s?(?:%|¢|c)(?=\s|$|[^A-Za-z0-9])/g;
+
+/** American odds for a payout multiple (payout ÷ cost, stake included). */
+export function americanFromDecimal(dec: number): number | null {
+  if (!(dec > 1)) return null;
+  return dec >= 2 ? Math.round((dec - 1) * 100) : Math.round(-100 / (dec - 1));
+}
+
+/** "Cost $9.99 … Max payout $406.50" / "Wager $10 To pay $55" / "Risk $10 To win $45". */
+function readStake(lines: string[]): { cost: number; payout: number } | null {
+  const money = (t: string) => [...t.matchAll(/\$\s?(\d[\d,]*(?:\.\d{1,2})?)/g)].map((m) => Number(m[1].replace(/,/g, "")));
+  const COST = /\b(cost|co[s5][tyr]|wager|stake|risk|bet amount|entry|amount)\b/i;
+  const PAY = /\b(max payout|payout|to pay|returns?|potential win|to win|win)\b/i;
+  for (let i = 0; i < lines.length; i++) {
+    if (!COST.test(lines[i]) && !PAY.test(lines[i])) continue;
+    // labels and amounts on one line, or labels with the amounts on the next line
+    const here = money(lines[i]);
+    const amounts = here.length >= 2 ? here : [...here, ...money(lines[i + 1] ?? "")];
+    const window = lines[i] + " " + (lines[i + 1] ?? "");
+    if (amounts.length < 2 || !COST.test(window) || !PAY.test(window)) continue;
+    const costFirst = window.search(COST) < window.search(PAY);
+    let [cost, pay] = costFirst ? amounts : [amounts[1], amounts[0]];
+    // "to win" is profit; payout/to pay/returns include the stake
+    if (/\bto win\b|potential win/i.test(window) && !/payout|to pay|return/i.test(window)) pay += cost;
+    if (cost > 0 && pay > cost) return { cost, payout: pay };
+  }
+  return null;
 }
 
 const norm = (s: string) => s.toLowerCase().normalize("NFKD").replace(/[^a-z0-9.+\-/@ ]/g, " ").replace(/\s+/g, " ").trim();
@@ -102,7 +143,15 @@ export function parseSlip(
   preferTeam?: (cands: Team[]) => Team,
 ): ParsedSlip {
   const clean = text.replace(/\b\d{1,2}:\d{2}\s*(?:[ap]\.?m\.?)?/gi, " ");
-  const lines = clean.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const rawLines = clean.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  // prediction-market prices are kept per line and removed from the text so they're never read as lines
+  const prices = rawLines.map(marketPrice);
+  const lines = rawLines.map((l) => l.replace(PRICE_RE, " ").replace(/\s+/g, " ").trim());
+  const priceIn = (from: number, to: number) => {
+    for (let k = from; k < to; k++) if (prices[k] != null) return prices[k];
+    return null;
+  };
+  const priceOdds = (p: number | null) => (p == null ? null : fairAmerican(p));
   const idx = teamIndex(dir.teams);
   const legs: ParsedLeg[] = [];
 
@@ -114,6 +163,8 @@ export function parseSlip(
       if (m.length) parlayOdds = Number(m[m.length - 1][1]);
     }
   }
+  const stake = readStake(rawLines);
+  if (parlayOdds == null && stake) parlayOdds = americanFromDecimal(stake.payout / stake.cost);
 
   // matchup headers ("Knicks @ Pacers") name the game for the legs next to them
   const headerAt = (i: number) => {
@@ -162,10 +213,12 @@ export function parseSlip(
     const issues = [...s.issues];
     if (!s.side) issues.push("Side not shown — defaulted to Over");
     const oddsM = [...span.join(" ").matchAll(ODDS_RE)];
+    const price = at >= 0 ? priceIn(at, at + Math.max(1, span.length)) : null;
+    if (price != null && !oddsM.length) issues.push(`Market price ${Math.round(price * 100)}% — shown as fair odds`);
     legs.push({
       raw: span.length ? span.join(" · ").slice(0, 160) : s.raw,
       sport: s.sport,
-      odds: oddsM.length ? Number(oddsM[oddsM.length - 1][1]) : null,
+      odds: oddsM.length ? Number(oddsM[oddsM.length - 1][1]) : priceOdds(price),
       issues,
       leg: {
         kind: "player",
@@ -179,7 +232,7 @@ export function parseSlip(
   }
 
   // team legs: a line naming a team (and no player) plus up to two following lines
-  const PARLAY_LINE = /parlay|\blegs?\b|payout|\bsgp\b|wager|to pay/i;
+  const PARLAY_LINE = /parlay|\blegs?\b|payout|\bsgp\b|wager|to pay|combo|\bcost\b/i;
   let consumed = 0; // lines before this index already belong to a leg
   for (let i = 0; i < lines.length; i++) {
     if (playerLines.has(i)) continue;
@@ -206,13 +259,17 @@ export function parseSlip(
     const teamsHere = teamsIn(w, idx, preferTeam);
     const team = teamsHere[0];
     const oddsM = [...w.matchAll(ODDS_RE)].map((m) => Number(m[1]));
-    const odds = oddsM.length ? oddsM[oddsM.length - 1] : null;
+    const tPrice = priceIn(i, j);
+    const odds = oddsM.length ? oddsM[oddsM.length - 1] : priceOdds(tPrice);
     const issues: string[] = [];
     let leg: ParsedLeg["leg"] | null = null;
 
-    if (teamsHere.length >= 2 && !hasMarket(w)) continue; // matchup header ("Knicks @ Pacers"), not a bet
+    if (teamsHere.length >= 2 && !hasMarket(w) && tPrice == null) continue; // matchup header ("Knicks @ Pacers"), not a bet
     const ou = wl.match(/\b(over|under|o|u)\s?(\d+(?:\.\d+)?)\b/);
-    if (/\bdraw\b|\btie\b/.test(wl)) leg = { kind: "draw", teamId: team.id };
+    // prediction markets phrase spreads as "Packers win by over 3.5 points"
+    const winBy = wl.match(/\bwins? by (?:over |more than )?(\d+(?:\.\d+)?)/);
+    if (winBy) leg = { kind: "spread", teamId: team.id, line: -Number(winBy[1]) };
+    else if (/\bdraw\b|\btie\b/.test(wl)) leg = { kind: "draw", teamId: team.id };
     else if (ou && (teamsHere.length >= 2 || /total/.test(wl))) {
       if (/team total/.test(wl)) issues.push("Team totals aren't modelled — treated as the game total");
       leg = { kind: "total", teamId: team.id, side: ou[1].startsWith("o") ? "over" : "under", line: Number(ou[2]) };
@@ -231,7 +288,7 @@ export function parseSlip(
     i = j - 1;
     consumed = j;
   }
-  return { legs, parlayOdds };
+  return { legs, parlayOdds, stake };
 }
 
 export function impliedProbability(american: number) {

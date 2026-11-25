@@ -62,7 +62,7 @@ test("a first name is never read as another player's surname", () => {
   assert.deepEqual(out.map((s) => s.playerName), ["Connor McDavid"]);
 });
 
-test("reads a PrizePicks-style board (line before stat, More/Less) and skips combo stats", () => {
+test("reads a PrizePicks-style board (line before stat, More/Less), including combo stats", () => {
   const board = `Tobias Delacroix
 HCT - G
 vs SLC Sun 7:45pm
@@ -78,5 +78,7 @@ Less More`;
   const pra = out.find((s) => s.statKey === "pra");
   assert.ok(pra, "PRA line read");
   assert.equal(pra!.threshold, 24.5);
-  assert.ok(out.some((s) => s.statKey === null && s.issues.some((i) => /Combo/.test(i))), "combo stat flagged, not misread as rebounds");
+  const ra = out.find((s) => s.statKey === "ra");
+  assert.ok(ra, "Rebs+Asts read as the combo, not as rebounds");
+  assert.equal(ra!.threshold, 6.5);
 });

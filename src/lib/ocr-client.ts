@@ -164,10 +164,13 @@ export async function ocrImage(file: File | Blob, onProgress?: (p: number) => vo
   }
   let done = 0;
   const parts = Math.max(1, strips.length);
+  // Absolute URLs under the app's base path: the app is served from a sub-folder on GitHub Pages
+  // (/Statline-Mobile-App/), and the worker resolves paths from its own (blob) location.
+  const base = new URL(import.meta.env.BASE_URL ?? "./", window.location.href);
   const worker = await createWorker("eng", 1, {
-    workerPath: "/ocr/worker.min.js",
-    corePath: "/ocr/core",
-    langPath: "/ocr/lang",
+    workerPath: new URL("ocr/worker.min.js", base).href,
+    corePath: new URL("ocr/core", base).href,
+    langPath: new URL("ocr/lang", base).href,
     logger: (m: { status: string; progress: number }) => m.status === "recognizing text" && onProgress?.((done + m.progress) / parts),
   });
   try {

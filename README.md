@@ -24,12 +24,13 @@ It opens full-screen with the STATLINE icon, like a regular app.
 - **Bottom tab bar** — Home, Live, Predict, Analyze, More — with bigger tap targets. Inner screens get a back button.
 - **Home** puts live games, today's Top Plays and the main tools first.
 - **Matchups** open on a *Players* tab with both rosters and their stats; Preview, Compare and History are one tap away.
-- **Pick Analyzer and Parlay Analyzer** share the Analyze tab. Screenshots are read on the phone (nothing is uploaded), and bet slips are read row by row so each leg keeps its odds.
+- **Pick Analyzer and Parlay Analyzer** share the Analyze tab. Slips from sportsbooks, pick'em apps (PrizePicks, Underdog, Pick6…) and prediction markets (**Kalshi, Polymarket**) are read: "22+ passing completions", Yes/No sides, prices like 58% or 58¢ (shown as fair odds next to the model's chance), and a combo's cost / max payout. Screenshots are read on the phone (nothing is uploaded), and bet slips are read row by row so each leg keeps its odds.
 - **No account needed.** Your Research Vault, tracked forecasts and imported PrizePicks lines are saved on the phone. **Settings → Export backup** opens your phone's share sheet so you can save the backup to Files or Drive, or send it to yourself; **Import backup** merges it back.
 - **Appearance:** all the desktop themes (Midnight, Carbon, Navy, OLED Black, Dim, Light, Paper, Auto), accent colours, any team's colours, and text size. The phone's status bar follows the theme.
 - **Explanations** use the engine's built-in summaries (an AI key can't be stored safely inside a public web app). Every number still comes from the same statistical engine.
 - **Sports News** (Home and More): the latest ESPN headlines with photos and links to the full stories, plus an **Injuries** tab with the newest injury-report notes. Headlines load straight from ESPN; offline, the last saved copy is shown.
 - **Injuries:** badges show *Out for season* and expected return dates. A player who's ruled out gets a clear "not expected to play" notice, and NBA projections account for key teammates who are out.
+- **Touchdowns and combos:** rushing TDs (QB, RB), receiving TDs, anytime TDs (including QBs), pass+rush yards, rush+rec yards, longest rush/reception, NBA pts+reb / pts+ast / reb+ast / steals+blocks, MLB hits+runs+RBIs.
 - **Forecast lines:** without a PrizePicks line, forecasts use the player's typical line (median of his last 10 games), so the percentages show real leans instead of sitting near 50%.
 - **Works offline:** stats you've opened are saved on the phone. When you're offline, the app says so and shows the saved stats.
 

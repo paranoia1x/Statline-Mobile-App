@@ -26,8 +26,8 @@ export interface GameOdds {
   awayMl: number | null;
 }
 
-/** v2 adds closing odds and extra NFL fantasy stats (fumbles lost, kicking, return/defensive TDs). */
-export const COMPACT_GAME_VERSION = 2;
+/** v2 added closing odds and extra NFL fantasy stats (fumbles lost, kicking, return/defensive TDs). */
+export const COMPACT_GAME_VERSION = 3; // v3: longest rush / reception
 
 export interface CompactGame {
   v: number;
@@ -234,10 +234,12 @@ export function parseSummary(sport: SportId, eventId: string, j: any): CompactGa
                 set(s, "carries", num(v.rushingAttempts));
                 set(s, "rushYds", num(v.rushingYards));
                 set(s, "rushTd", num(v.rushingTouchdowns));
+                set(s, "longRush", num(v.longRushing));
               } else if (grp.name === "receiving") {
                 set(s, "rec", num(v.receptions));
                 set(s, "recYds", num(v.receivingYards));
                 set(s, "recTd", num(v.receivingTouchdowns));
+                set(s, "longRec", num(v.longReception));
                 set(s, "targets", num(v.receivingTargets));
               } else if (grp.name === "fumbles") {
                 set(s, "fumLost", num(v.fumblesLost));

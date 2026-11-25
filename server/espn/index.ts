@@ -15,7 +15,7 @@ import type { SportsDataProvider, GameFilter } from "@/lib/data/provider";
 import type { Game, Injury, LiveGame, Player, PlayerGameLog, SportId, Team, TeamGameLog, AvailabilityStatus } from "@/lib/types";
 import { SPORT_IDS } from "@/lib/types";
 import { registerImage } from "@/lib/images/registry";
-import { setSportLabels } from "@/lib/sports";
+import { deriveStats, setSportLabels } from "@/lib/sports";
 import { espnJson, readBox, writeBox } from "./client";
 import { COMPACT_GAME_VERSION, parseSummary, type CompactGame } from "./parse";
 
@@ -457,7 +457,7 @@ export class EspnProvider implements SportsDataProvider {
         const arr = playerLogs.get(pid) ?? [];
         arr.push({
           playerId: pid, gameId: g.id, sport, season: g.season, date: g.date, teamId: team.id, opponentId: opp.id,
-          home: line.teamEspnId === box.home.teamEspnId, started: line.starter || !!line.startingPitcher, minutes: line.minutes, stats: line.stats,
+          home: line.teamEspnId === box.home.teamEspnId, started: line.starter || !!line.startingPitcher, minutes: line.minutes, stats: deriveStats(sport, { ...line.stats }),
         });
         playerLogs.set(pid, arr);
       }

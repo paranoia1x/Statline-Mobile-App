@@ -18,5 +18,11 @@ export const MODEL_VERSIONS = [
     description:
       "Soccer forecasts use the betting market's implied team total (backtest: accuracy 77.8% → 78.7%). Forecasts show the market total for every sport when a line exists. Fantasy projections added (defense vs position, implied team totals, NFL weather).",
   },
+  {
+    id: "stat-forecast-1.3.0",
+    released: "2026-11-25",
+    description:
+      "Rushing, receiving and QB touchdowns, combo stats (pass+rush yds, rush+rec yds, pts+reb, pts+ast, reb+ast, steals+blocks, hits+runs+RBIs) and longest rush/reception are forecast. Long-shot props (lines of 0.5: touchdowns, goals, home runs) get a two-parameter calibration fitted per position; stats the backtest hasn't measured are no longer calibrated with the sport-wide slope.",
+  },
 ];
 export const CURRENT_MODEL_VERSION = MODEL_VERSIONS[MODEL_VERSIONS.length - 1].id;

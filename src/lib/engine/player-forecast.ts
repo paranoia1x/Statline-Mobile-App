@@ -46,7 +46,7 @@ export interface PlayerForecast {
   pUnder: number;
   pPush: number;
   rawPOver: number;
-  calibration: { slope: number; samples: number } | null;
+  calibration: { slope: number; samples: number; intercept?: number } | null;
   lean: Direction;
   confidence: { level: "low" | "medium" | "high"; score: number; reasons: string[] };
   components: ForecastComponent[];
@@ -81,7 +81,7 @@ export interface ForecastInput {
   /** Prior mean for the stat among the player's position group (shrinkage target). */
   prior?: number | null;
   /** Logit-scale calibration slope fitted by the walk-forward backtest. */
-  calibrationSlope?: { slope: number; samples: number } | null;
+  calibrationSlope?: { slope: number; samples: number; intercept?: number } | null;
   now?: Date;
   /** Regular teammates out for this game (see engine/teammates.ts). */
   teammatesOut?: { share: number; players: { id: string; name: string; share: number }[] } | null;
@@ -342,7 +342,7 @@ export function computePlayerForecast(input: ForecastInput): PlayerForecast {
     const decided = 1 - pPush;
     if (decided > 0) {
       const po = pOver / decided;
-      const calibrated = 1 / (1 + Math.exp(-cal.slope * Math.log(Math.max(1e-6, po) / Math.max(1e-6, 1 - po))));
+      const calibrated = 1 / (1 + Math.exp(-((cal.intercept ?? 0) + cal.slope * Math.log(Math.max(1e-6, po) / Math.max(1e-6, 1 - po)))));
       pOver = calibrated * decided;
       pUnder = (1 - calibrated) * decided;
     }

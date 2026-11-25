@@ -22,15 +22,19 @@ export interface ParsedScenario {
 
 /** Stat names that are combos/fantasy scores the model does not forecast (key ""). Checked first. */
 const UNMODELLED: [string, string][] = [
-  ["rebs+asts", ""], ["pts+rebs", ""], ["pts+asts", ""], ["blks+stls", ""], ["fantasy score", ""], ["fantasy points", ""],
-  ["hits+runs+rbis", ""], ["pass+rush yds", ""], ["rush+rec yds", ""], ["rush+rec tds", ""], ["goals+assists", ""], ["dunks", ""],
-  ["1st 3 minutes", ""], ["first 3 minutes", ""], ["1h ", ""], ["1q ", ""],
+  ["fantasy score", ""], ["fantasy points", ""], ["dunks", ""],
+  ["1st 3 minutes", ""], ["first 3 minutes", ""], ["1h ", ""], ["1q ", ""], ["1st half", ""], ["first half", ""], ["1st quarter", ""], ["first quarter", ""],
 ];
 
 const STAT_ALIASES: Record<SportId, [string, string][]> = {
   nba: [
     ...UNMODELLED,
-    ["pts+rebs+asts", "pra"], ["3-pt made", "fg3m"], ["3-pointers made", "fg3m"], ["rebs", "reb"], ["asts", "ast"],
+    ["pts+rebs+asts", "pra"], ["pts + rebs + asts", "pra"],
+    ["rebs+asts", "ra"], ["rebs + asts", "ra"], ["rebounds + assists", "ra"], ["reb+ast", "ra"],
+    ["pts+rebs", "pr"], ["pts + rebs", "pr"], ["points + rebounds", "pr"], ["pts+reb", "pr"],
+    ["pts+asts", "pa"], ["pts + asts", "pa"], ["points + assists", "pa"], ["pts+ast", "pa"],
+    ["blks+stls", "stocks"], ["blks + stls", "stocks"], ["steals + blocks", "stocks"], ["stl+blk", "stocks"], ["stocks", "stocks"],
+    ["3-pt made", "fg3m"], ["3-pointers made", "fg3m"], ["rebs", "reb"], ["asts", "ast"],
     ["blocked shots", "blk"], ["steals", "stl"],
     ["pts+reb+ast", "pra"], ["pts + reb + ast", "pra"], ["points + rebounds + assists", "pra"], ["pra", "pra"],
     ["three pointers made", "fg3m"], ["three-pointers", "fg3m"], ["3-pointers", "fg3m"], ["threes", "fg3m"], ["3pm", "fg3m"], ["3pt", "fg3m"],
@@ -39,6 +43,15 @@ const STAT_ALIASES: Record<SportId, [string, string][]> = {
   ],
   nfl: [
     ...UNMODELLED,
+    ["pass+rush yds", "passRushYds"], ["pass + rush yds", "passRushYds"], ["passing + rushing yards", "passRushYds"], ["pass+rush yards", "passRushYds"],
+    ["rush+rec yds", "rushRecYds"], ["rush + rec yds", "rushRecYds"], ["rushing + receiving yards", "rushRecYds"], ["rush+rec yards", "rushRecYds"],
+    ["rush+rec tds", "td"], ["rush + rec tds", "td"], ["rushing + receiving tds", "td"],
+    ["longest rush", "longRush"], ["longest reception", "longRec"], ["longest catch", "longRec"],
+    ["rushing touchdowns", "rushTd"], ["rushing touchdown", "rushTd"], ["rushing tds", "rushTd"], ["rushing td", "rushTd"], ["rush tds", "rushTd"], ["rush td", "rushTd"],
+    ["receiving touchdowns", "recTd"], ["receiving touchdown", "recTd"], ["receiving tds", "recTd"], ["receiving td", "recTd"], ["rec tds", "recTd"], ["rec td", "recTd"],
+    ["passing tds", "passTd"], ["passing td", "passTd"], ["passing touchdown", "passTd"], ["touchdown passes", "passTd"], ["td passes", "passTd"],
+    ["passing completions", "cmp"], ["passing attempts", "att"],
+    ["anytime touchdown scorer", "td"], ["anytime td scorer", "td"], ["anytime touchdown", "td"], ["to score a touchdown", "td"], ["score a touchdown", "td"], ["score a td", "td"],
     ["pass completions", "cmp"], ["receiving yds", "recYds"],
     ["passing yards", "passYds"], ["pass yds", "passYds"], ["pass yards", "passYds"], ["passing yds", "passYds"],
     ["rushing yards", "rushYds"], ["rush yds", "rushYds"], ["rush yards", "rushYds"], ["rushing yds", "rushYds"],
@@ -46,10 +59,11 @@ const STAT_ALIASES: Record<SportId, [string, string][]> = {
     ["receptions", "rec"], ["catches", "rec"], ["rec", "rec"], ["targets", "targets"],
     ["passing touchdowns", "passTd"], ["pass tds", "passTd"], ["pass td", "passTd"], ["completions", "cmp"], ["cmp", "cmp"],
     ["pass attempts", "att"], ["attempts", "att"], ["interceptions", "int"], ["ints", "int"],
-    ["carries", "carries"], ["rush attempts", "carries"], ["touchdowns", "td"], ["anytime td", "td"], ["tds", "td"],
+    ["carries", "carries"], ["rush attempts", "carries"], ["rushing attempts", "carries"], ["touchdowns", "td"], ["touchdown", "td"], ["anytime td", "td"], ["tds", "td"], ["td", "td"],
   ],
   mlb: [
     ...UNMODELLED,
+    ["hits+runs+rbis", "hrr"], ["hits + runs + rbis", "hrr"], ["h+r+rbi", "hrr"],
     ["hitter strikeouts", "so"], ["earned runs allowed", "er"], ["walks allowed", ""], ["pitcher outs", "outs"],
     ["total bases", "tb"], ["home runs", "hr"], ["homers", "hr"], ["hr", "hr"], ["rbis", "rbi"], ["rbi", "rbi"],
     ["hits allowed", "hitsAllowed"], ["earned runs", "er"], ["outs recorded", "outs"], ["pitching outs", "outs"],
@@ -57,7 +71,7 @@ const STAT_ALIASES: Record<SportId, [string, string][]> = {
   ],
   nhl: [
     ...UNMODELLED,
-    ["goalie saves", "saves"], ["goals allowed", "ga"],
+    ["goalie saves", "saves"], ["goals allowed", "ga"], ["goals+assists", "points"], ["goals + assists", "points"],
     ["shots on goal", "sog"], ["sog", "sog"], ["blocked shots", "blk"], ["saves", "saves"], ["goals against", "ga"],
     ["points", "points"], ["pts", "points"], ["goals", "goals"], ["assists", "assists"],
   ],
@@ -70,8 +84,8 @@ const STAT_ALIASES: Record<SportId, [string, string][]> = {
 };
 
 const SIDE_WORDS: [RegExp, "over" | "under"][] = [
-  [/\b(over|more|higher|above|o)\b/i, "over"],
-  [/\b(under|less|fewer|lower|below|u)\b/i, "under"],
+  [/\b(over|more|higher|above|o|yes)\b/i, "over"],
+  [/\b(under|less|fewer|lower|below|u|no)\b/i, "under"],
 ];
 
 /** Words that appear in stat descriptions and must never be read as a bare surname. */
@@ -79,7 +93,7 @@ const COMMON_WORDS = new Set(
   [
     ...Object.values(STAT_ALIASES).flatMap((list) => list.flatMap(([alias]) => alias.split(/\s+/))),
     "over", "under", "more", "less", "higher", "lower", "above", "below", "vs", "at", "game", "games", "point", "points",
-    "goal", "goals", "save", "saves", "hit", "hits", "run", "runs", "yards", "shot", "shots", "block", "blocks", "pick", "picks", "line",
+    "goal", "goals", "save", "saves", "hit", "hits", "run", "runs", "yards", "shot", "shots", "block", "blocks", "pick", "picks", "line", "yes", "no", "will", "score", "win", "combo", "market",
   ].map((w) => w.toLowerCase()),
 );
 
@@ -197,6 +211,11 @@ export function parseScenarios(text: string, directory: { players: Player[]; tea
     // lines are usually half-points: prefer a decimal number when the text also contains other integers
     const pickNum = nums.find((n) => n.decimal) ?? nums[0];
     if (pickNum) (threshold = pickNum.value), (side = pickNum.side);
+    // yes/no touchdown markets ("Anytime TD scorer", "to score a touchdown") mean 1 or more
+    if (threshold == null && (statKey === "td" || statKey === "rushTd" || statKey === "recTd" || statKey === "goals")) {
+      threshold = 0.5;
+      side ??= /\bno\b/.test(seg) ? "under" : "over";
+    }
     if (threshold == null) issues.push("Threshold not found");
     if (!side) {
       const matched = SIDE_WORDS.filter(([re]) => re.test(seg)).map(([, sd]) => sd);

@@ -52,6 +52,8 @@ export function logLoss(samples: ScoredSample[]) {
 export interface BacktestSample {
   sport: SportId;
   statKey: string;
+  /** Position group (calibration can differ by position, e.g. touchdowns for QBs vs RBs). */
+  group?: string;
   playerId: string;
   gameId: string;
   date: string;
@@ -66,7 +68,8 @@ export interface BacktestResult {
   generatedAt: string;
   samples: BacktestSample[];
   slope: number;
-  byStat: Record<string, { slope: number; n: number }>;
+  /** Per stat (and per "stat@position"): logit slope, plus an intercept for long-shot props (lines of 0.5). */
+  byStat: Record<string, { slope: number; n: number; intercept?: number }>;
   metrics: {
     n: number;
     accuracy: number | null;
@@ -124,13 +127,29 @@ async function doBacktest(sport: SportId): Promise<BacktestResult> {
   const decided = samples.filter((s) => s.outcome !== "push");
   const fit = (ss: BacktestSample[]) => fitSlope(ss.map((s) => ({ p: clamp(s.rawPOver, 0.01, 0.99), hit: (s.outcome === "over" ? 1 : 0) as 0 | 1 })));
   const slope = fit(decided);
-  const byStat: Record<string, { slope: number; n: number }> = {};
+  const byStat: BacktestResult["byStat"] = {};
+  // long-shot props (anytime TD, 1+ goal, 1+ HR) need a base-rate correction too, not just a slope
+  const fitCal = (ss: BacktestSample[]) => {
+    const thr = ss.map((x) => x.threshold).sort((a, b) => a - b)[Math.floor(ss.length / 2)];
+    const pts = ss.map((x) => ({ p: clamp(x.rawPOver, 0.01, 0.99), hit: (x.outcome === "over" ? 1 : 0) as 0 | 1 }));
+    return thr <= 0.5 ? fitPlatt(pts) : { slope: fitSlope(pts) };
+  };
   for (const key of new Set(decided.map((s) => s.statKey))) {
     const ss = decided.filter((s) => s.statKey === key);
-    byStat[key] = { slope: ss.length >= 120 ? fit(ss) : slope, n: ss.length };
+    // too few samples for a stat-specific fit: leave it uncalibrated rather than borrow the sport-wide slope,
+    // which is fitted on near-50/50 lines and badly inflates long shots such as touchdowns
+    byStat[key] = ss.length >= 120 ? { ...fitCal(ss), n: ss.length } : { slope: 1, n: ss.length };
+    for (const g of new Set(ss.map((x) => x.group).filter(Boolean))) {
+      const sg = ss.filter((x) => x.group === g);
+      if (sg.length >= 120) byStat[`${key}@${g}`] = { ...fitCal(sg), n: sg.length };
+    }
   }
   const scoredRaw = decided.map((s) => ({ p: clamp(s.rawPOver, 0.001, 0.999), hit: (s.outcome === "over" ? 1 : 0) as 0 | 1 }));
-  const scoredCal = decided.map((s) => ({ p: sigmoid((byStat[s.statKey]?.slope ?? slope) * logit(clamp(s.rawPOver, 0.001, 0.999))), hit: (s.outcome === "over" ? 1 : 0) as 0 | 1 }));
+  const calOf = (s: BacktestSample) => byStat[`${s.statKey}@${s.group}`] ?? byStat[s.statKey] ?? { slope };
+  const scoredCal = decided.map((s) => {
+    const c = calOf(s);
+    return { p: sigmoid((c.intercept ?? 0) + c.slope * logit(clamp(s.rawPOver, 0.001, 0.999))), hit: (s.outcome === "over" ? 1 : 0) as 0 | 1 };
+  });
   const correct = scoredCal.filter((s) => (s.p >= 0.5 ? s.hit === 1 : s.hit === 0)).length;
   const byConfidence: BacktestResult["byConfidence"] = {};
   for (const lvl of ["high", "medium", "low"]) {
@@ -175,6 +194,11 @@ async function backtestPlayer(sport: SportId, player: Player): Promise<BacktestS
     const logs = await prov.getPlayerLogs(player.id);
     if (logs.length < 14) return samples;
     const head = (SPORTS[sport].headline[player.positionGroup] ?? []).map((k) => statDef(sport, k)).filter((s) => s && s.forecastable).slice(0, 2);
+    // touchdown props are lopsided (usually "1+"), so they get their own calibration samples
+    if (sport === "nfl" && ["QB", "RB", "WR", "TE"].includes(player.positionGroup)) {
+      const td = statDef(sport, "td");
+      if (td && !head.includes(td)) head.push(td);
+    }
     const targets = logs.slice(-GAMES_PER_PLAYER);
     for (const target of targets) {
       const prior = logs.filter((l) => l.date < target.date);
@@ -197,13 +221,31 @@ async function backtestPlayer(sport: SportId, player: Player): Promise<BacktestS
           gameDate: target.date, ctx, injury: null, threshold, dataSource: prov.isDemo ? "demo" : "live", teammatesOut: mates, gameEnv, restDays: rest,
         });
         samples.push({
-          sport, statKey: stat.key, playerId: player.id, gameId: target.gameId, date: target.date, threshold,
+          sport, statKey: stat.key, group: player.positionGroup, playerId: player.id, gameId: target.gameId, date: target.date, threshold,
           rawPOver: f.rawPOver, outcome: actual > threshold ? "over" : actual < threshold ? "under" : "push",
           confidence: f.confidence.level,
         });
       }
     }
     return samples;
+}
+
+/** Two-parameter Platt calibration (intercept + slope on the logit scale) via grid search. */
+function fitPlatt(samples: ScoredSample[]): { slope: number; intercept: number } {
+  if (samples.length < 30) return { slope: 1, intercept: 0 };
+  let best = { slope: 1, intercept: 0 };
+  let bestLoss = Infinity;
+  const lg = samples.map((s) => logit(s.p));
+  for (let b = 0.2; b <= 1.6001; b += 0.05)
+    for (let a = -2; a <= 2.0001; a += 0.05) {
+      let loss = 0;
+      for (let i = 0; i < samples.length; i++) {
+        const p = clamp(sigmoid(a + b * lg[i]), 1e-6, 1 - 1e-6);
+        loss -= samples[i].hit ? Math.log(p) : Math.log(1 - p);
+      }
+      if (loss < bestLoss) (bestLoss = loss), (best = { slope: Math.round(b * 100) / 100, intercept: Math.round(a * 100) / 100 });
+    }
+  return best;
 }
 
 /** One-parameter logit-slope calibration (Platt scaling without intercept) via grid search. */
@@ -229,11 +271,12 @@ export async function getTrackRecord(sport: SportId): Promise<TrackRecord | null
   }
 }
 
-export async function getCalibration(sport: SportId, statKey: string): Promise<{ slope: number; samples: number } | null> {
+export async function getCalibration(sport: SportId, statKey: string, group?: string): Promise<{ slope: number; samples: number; intercept?: number } | null> {
   try {
     const bt = await runBacktest(sport);
-    const s = bt.byStat[statKey];
-    return { slope: s?.slope ?? bt.slope, samples: s?.n ?? bt.metrics.n };
+    const s = (group ? bt.byStat[`${statKey}@${group}`] : undefined) ?? bt.byStat[statKey];
+    // only stats the backtest actually measured are calibrated
+    return s && s.n >= 120 ? { slope: s.slope, samples: s.n, intercept: s.intercept } : null;
   } catch {
     return null;
   }

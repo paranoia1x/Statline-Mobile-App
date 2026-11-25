@@ -203,7 +203,7 @@ export function ParlayAnalyzer({ dir, signedIn }: { dir: Directory; signedIn: bo
                 <img src={preview} alt="Uploaded bet slip preview" className="max-h-72 rounded object-contain" />
               ) : (
                 <>
-                  <div className="text-sm text-ink-100">Tap to choose your bet slip screenshot</div>
+                  <div className="text-sm text-ink-100">Tap to choose your bet slip screenshot (sportsbook, Kalshi, Polymarket…)</div>
                   <div className="mt-1 text-xs text-ink-400">Player props, moneylines, spreads and totals. PNG, JPEG, WebP or GIF up to 8 MB — read in your browser.</div>
                 </>
               )}

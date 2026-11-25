@@ -68,6 +68,35 @@ const ratio = (logs: TeamGameLog[], num: (l: TeamGameLog) => number, den: (l: Te
   return d ? logs.reduce((s, l) => s + num(l), 0) / d : null;
 };
 
+/**
+ * Combination stats sportsbooks and pick'em apps offer, derived from a box-score line
+ * (only when every part is present). Applied when game logs are built.
+ */
+export function deriveStats(sport: SportId, s: Record<string, number>) {
+  const has = (...k: string[]) => k.every((x) => typeof s[x] === "number");
+  const sum = (...k: string[]) => k.reduce((a, x) => a + (s[x] ?? 0), 0);
+  if (sport === "nba") {
+    if (has("pts", "reb")) s.pr = sum("pts", "reb");
+    if (has("pts", "ast")) s.pa = sum("pts", "ast");
+    if (has("reb", "ast")) s.ra = sum("reb", "ast");
+    if (has("stl", "blk")) s.stocks = sum("stl", "blk");
+  } else if (sport === "nfl") {
+    // a quarterback who threw but never ran had 0 rushing yards / TDs (ESPN omits the row)
+    if (typeof s.att === "number" && s.att > 0) {
+      s.rushYds ??= 0;
+      s.carries ??= 0;
+    }
+    if (typeof s.rushYds === "number" || typeof s.carries === "number") s.rushTd ??= 0;
+    if (typeof s.rec === "number" || typeof s.targets === "number") s.recTd ??= 0;
+    if (s.rushTd != null || s.recTd != null) s.td = sum("rushTd", "recTd");
+    if (has("passYds")) s.passRushYds = sum("passYds", "rushYds");
+    if (has("rushYds") || has("recYds")) s.rushRecYds = sum("rushYds", "recYds");
+  } else if (sport === "mlb") {
+    if (has("hits", "runs", "rbi")) s.hrr = sum("hits", "runs", "rbi");
+  }
+  return s;
+}
+
 export function aggregateStat(def: StatDef, logs: PlayerGameLog[]): number | null {
   if (!logs.length) return null;
   if (def.ratio) {
@@ -100,6 +129,10 @@ const nba: SportDef = {
     { key: "reb", label: "Rebounds", short: "REB", format: "dec1", groups: ["G", "F", "C"], forecastable: true, dist: "count", dim: "rebounding" },
     { key: "ast", label: "Assists", short: "AST", format: "dec1", groups: ["G", "F", "C"], forecastable: true, dist: "count", dim: "playmaking" },
     { key: "pra", label: "Pts + Reb + Ast", short: "PRA", format: "dec1", groups: ["G", "F", "C"], forecastable: true, dist: "count", dim: "scoring" },
+    { key: "pr", label: "Pts + Reb", short: "P+R", format: "dec1", groups: ["G", "F", "C"], forecastable: true, dist: "count", dim: "scoring" },
+    { key: "pa", label: "Pts + Ast", short: "P+A", format: "dec1", groups: ["G", "F", "C"], forecastable: true, dist: "count", dim: "scoring" },
+    { key: "ra", label: "Reb + Ast", short: "R+A", format: "dec1", groups: ["G", "F", "C"], forecastable: true, dist: "count", dim: "rebounding" },
+    { key: "stocks", label: "Steals + Blocks", short: "STL+BLK", format: "dec1", groups: ["G", "F", "C"], forecastable: true, dist: "count", dim: "ballsecurity" },
     { key: "stl", label: "Steals", short: "STL", format: "dec1", groups: ["G", "F", "C"], forecastable: true, dist: "count", dim: "ballsecurity" },
     { key: "blk", label: "Blocks", short: "BLK", format: "dec1", groups: ["G", "F", "C"], forecastable: true, dist: "count", dim: "interior" },
     { key: "fg3m", label: "Three-pointers made", short: "3PM", format: "dec1", groups: ["G", "F", "C"], forecastable: true, dist: "count", dim: "perimeter" },
@@ -167,7 +200,15 @@ const nfl: SportDef = {
     { key: "rec", label: "Receptions", short: "REC", format: "dec1", groups: ["RB", "WR", "TE"], forecastable: true, dist: "count", dim: "pass" },
     { key: "recYds", label: "Receiving yards", short: "REC YDS", format: "dec1", groups: ["RB", "WR", "TE"], forecastable: true, dist: "continuous", dim: "pass" },
     { key: "targets", label: "Targets", short: "TGT", format: "dec1", groups: ["RB", "WR", "TE"], forecastable: true, dist: "count", dim: "passvolume" },
-    { key: "td", label: "Scrimmage touchdowns", short: "TD", format: "dec2", groups: ["RB", "WR", "TE"], forecastable: true, dist: "count", dim: "scoring" },
+    { key: "rushTd", label: "Rushing touchdowns", short: "RUSH TD", format: "dec2", groups: ["QB", "RB"], forecastable: true, dist: "count", dim: "scoring" },
+    { key: "recTd", label: "Receiving touchdowns", short: "REC TD", format: "dec2", groups: ["RB", "WR", "TE"], forecastable: true, dist: "count", dim: "scoring" },
+    { key: "td", label: "Touchdowns (rush + rec)", short: "TD", format: "dec2", groups: ["QB", "RB", "WR", "TE"], forecastable: true, dist: "count", dim: "scoring" },
+    { key: "passRushYds", label: "Pass + rush yards", short: "P+R YDS", format: "dec1", groups: ["QB"], forecastable: true, dist: "continuous", dim: "pass" },
+    { key: "rushRecYds", label: "Rush + rec yards", short: "R+R YDS", format: "dec1", groups: ["RB", "WR", "TE"], forecastable: true, dist: "continuous", dim: "run" },
+    { key: "longRush", label: "Longest rush", short: "LNG RUSH", format: "dec1", groups: ["QB", "RB"], forecastable: true, dist: "continuous", dim: "run" },
+    { key: "longRec", label: "Longest reception", short: "LNG REC", format: "dec1", groups: ["RB", "WR", "TE"], forecastable: true, dist: "continuous", dim: "pass" },
+    { key: "ypa", label: "Yards per pass attempt", short: "Y/A", format: "dec1", groups: ["QB"], forecastable: false, dist: "continuous", ratio: { num: "passYds", den: "att" } },
+    { key: "ypr", label: "Yards per reception", short: "Y/R", format: "dec1", groups: ["RB", "WR", "TE"], forecastable: false, dist: "continuous", ratio: { num: "recYds", den: "rec" } },
     { key: "cmpPct", label: "Completion %", short: "CMP%", format: "pct", groups: ["QB"], forecastable: false, dist: "continuous", ratio: { num: "cmp", den: "att" } },
     { key: "ypc", label: "Yards per carry", short: "YPC", format: "dec1", groups: ["RB"], forecastable: false, dist: "continuous", ratio: { num: "rushYds", den: "carries" } },
     { key: "fgm", label: "Field goals made", short: "FGM", format: "dec1", groups: ["K"], forecastable: true, dist: "count", dim: "scoring" },
@@ -175,7 +216,7 @@ const nfl: SportDef = {
     { key: "kickPts", label: "Kicking points", short: "K PTS", format: "dec1", groups: ["K"], forecastable: true, dist: "count", dim: "scoring" },
     { key: "usage", label: "Opportunity share %", short: "OPP%", format: "dec1", groups: ["RB", "WR", "TE"], forecastable: false, dist: "continuous" },
   ],
-  headline: { QB: ["passYds", "passTd", "rushYds"], RB: ["rushYds", "carries", "rec"], WR: ["recYds", "rec", "targets"], TE: ["recYds", "rec", "targets"], K: ["kickPts", "fgm", "xpm"] },
+  headline: { QB: ["passYds", "passTd", "rushYds", "rushTd"], RB: ["rushYds", "rushTd", "carries", "rec"], WR: ["recYds", "rec", "targets"], TE: ["recYds", "rec", "targets"], K: ["kickPts", "fgm", "xpm"] },
   dims: [
     { id: "pass", label: "Passing yards allowed", source: "allowed", key: "passYds" },
     { id: "passvolume", label: "Opponent pass attempts faced", source: "allowed", key: "passAtt" },
@@ -230,6 +271,7 @@ const mlb: SportDef = {
     { key: "runs", label: "Runs", short: "R", format: "dec2", groups: ["H"], forecastable: true, dist: "count", dim: "runs" },
     { key: "rbi", label: "RBIs", short: "RBI", format: "dec2", groups: ["H"], forecastable: true, dist: "count", dim: "runs" },
     { key: "tb", label: "Total bases", short: "TB", format: "dec2", groups: ["H"], forecastable: true, dist: "count", dim: "pitching" },
+    { key: "hrr", label: "Hits + runs + RBIs", short: "H+R+RBI", format: "dec2", groups: ["H"], forecastable: true, dist: "count", dim: "runs" },
     { key: "so", label: "Strikeouts (batting)", short: "SO", format: "dec2", groups: ["H"], forecastable: true, dist: "count", dim: "strikeouts", higherIsBetter: false },
     { key: "bb", label: "Walks", short: "BB", format: "dec2", groups: ["H"], forecastable: true, dist: "count", dim: "walks" },
     { key: "avg", label: "Batting average", short: "AVG", format: "avg3", groups: ["H"], forecastable: false, dist: "continuous", ratio: { num: "hits", den: "ab" } },

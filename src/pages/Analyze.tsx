@@ -28,7 +28,7 @@ export default function Analyze({ tab }: { tab: "picks" | "parlay" }) {
       />
       <p className="px-1 text-xs leading-relaxed text-ink-400">
         {tab === "parlay"
-          ? "Upload a screenshot of your bet slip (or paste it). STATLINE reads every leg — player props, moneylines, spreads and totals — gives each a probability, and works out the chance the whole parlay hits."
+          ? "Upload a screenshot of your bet slip (or paste it) — sportsbooks, pick'em apps, and prediction markets like Kalshi and Polymarket. STATLINE reads every leg — player props, moneylines, spreads and totals — gives each a probability, compares it with the price on the slip, and works out the chance the whole parlay hits."
           : "Upload a screenshot of your picks (or paste them). Confirm what was read, then get an independent statistical report and a hit/miss verdict for each one. Screenshots are read on your phone."}
       </p>
       {!dir.data ? <Loading rows={2} /> : tab === "parlay" ? <ParlayAnalyzer dir={dir.data} signedIn /> : <Analyzer dir={dir.data} signedIn />}
