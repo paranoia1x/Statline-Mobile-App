@@ -8,6 +8,7 @@ const GROUPS: { label: string; items: { href: string; label: string; sub: string
       { href: "/news", label: "Sports News", sub: "Latest headlines and injury updates", icon: ICONS.news },
       { href: "/players", label: "Player Research", sub: "Profiles, game logs, splits, injuries", icon: ICONS.players },
       { href: "/stats", label: "Player Statistics", sub: "League-wide stat leaders", icon: ICONS.stats },
+      { href: "/box-score-scanner", label: "Box Score Scanner", sub: "Read box scores and fantasy roster screenshots", icon: ICONS.upload },
       { href: "/teams", label: "Team Analytics", sub: "Offensive & defensive rankings", icon: ICONS.teams },
       { href: "/matchups", label: "Matchup Center", sub: "Previews with both rosters", icon: ICONS.matchups },
     ],

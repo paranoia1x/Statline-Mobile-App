@@ -29,6 +29,7 @@ const Settings = lazy(() => import("@/pages/Settings"));
 const Search = lazy(() => import("@/pages/Search"));
 const News = lazy(() => import("@/pages/News"));
 const Fantasy = lazy(() => import("@/pages/Fantasy"));
+const BoxScoreScanner = lazy(() => import("@/pages/BoxScoreScanner"));
 
 type Tab = "home" | "live" | "predict" | "analyze" | "more";
 interface Screen {
@@ -56,6 +57,7 @@ const SCREENS: Screen[] = [
   { pattern: "/matchups", tab: "live", title: "Matchups", sportBar: true, render: () => <Matchups /> },
   { pattern: "/matchups/:id", tab: "live", title: "Matchup", render: (p) => <MatchupPage id={p.id} /> },
   { pattern: "/stats", tab: "more", title: "Player Stats", sportBar: true, render: (_p, q) => <Stats query={q} /> },
+  { pattern: "/box-score-scanner", tab: "more", title: "Box Score Scanner", render: () => <BoxScoreScanner /> },
   { pattern: "/vault", tab: "more", title: "Research Vault", render: (_p, q) => <Vault openId={q.get("open") ?? undefined} /> },
   { pattern: "/tracker", tab: "more", title: "Performance Tracker", render: () => <Tracker /> },
   { pattern: "/settings", tab: "more", title: "Settings", render: () => <Settings /> },
