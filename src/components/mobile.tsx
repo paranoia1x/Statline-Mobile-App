@@ -21,6 +21,7 @@ export const ICONS = {
   tracker: "M3 17l6-6 4 4 8-8M15 7h6v6",
   settings: "M12 15a3 3 0 100-6 3 3 0 000 6zM19 12h2M3 12h2M12 3v2M12 19v2M17 7l1.4-1.4M5.6 18.4L7 17M17 17l1.4 1.4M5.6 5.6L7 7",
   chevron: "M9 6l6 6-6 6",
+  fantasy: "M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0zM17 5h3v2a3 3 0 01-3 3M7 5H4v2a3 3 0 003 3",
   download: "M12 4v12m0 0l-5-5m5 5l5-5M4 20h16",
   upload: "M12 20V8m0 0l-5 5m5-5l5 5M4 4h16",
   info: "M12 22a10 10 0 100-20 10 10 0 000 20zM12 16v-4M12 8h.01",

@@ -6,6 +6,7 @@ import { mean } from "./math";
 import { computePlayerForecast, type PlayerForecast } from "./player-forecast";
 import { getCalibration } from "./evaluation";
 import { teammatesOut } from "./teammates";
+import { gameEnvFor, restFromDates } from "./odds";
 
 export class ForecastError extends Error {
   constructor(message: string, public status = 400) {
@@ -89,6 +90,7 @@ export async function forecastPlayerStat(req: ForecastRequest): Promise<{ foreca
   const prior = await positionPrior(player.sport, player.positionGroup, stat.key, game.date);
   const cal = await getCalibration(player.sport, stat.key);
   const mates = await teammatesOut(player, stat.key, game).catch(() => null);
+  const teamDates = (await p.listGames({ teamId: player.teamId, to: game.date })).map((g) => g.date);
   const forecast = computePlayerForecast({
     player,
     logs,
@@ -105,6 +107,8 @@ export async function forecastPlayerStat(req: ForecastRequest): Promise<{ foreca
     calibrationSlope: cal,
     now: p.now(),
     teammatesOut: mates,
+    gameEnv: gameEnvFor(game, player.teamId, ctx.teams.get(player.teamId)?.scoreFor),
+    restDays: restFromDates(teamDates, game.date),
   });
   if (!isFuture) forecast.warnings.push("This game has already been played; the forecast uses only data available before tip-off/kick-off.");
   return { forecast, player, game };

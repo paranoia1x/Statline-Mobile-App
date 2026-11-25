@@ -15,12 +15,15 @@ import fs from "node:fs";
 import path from "node:path";
 import { EspnProvider } from "../server/espn";
 import { getImageProvider } from "../server/images";
+import { addNflWeather } from "../server/weather";
 import { getProvider, setProvider } from "@/lib/data";
 import { SnapshotProvider } from "@/lib/data/snapshot";
 import { packLogs, packTeamLogs, SNAPSHOT_VERSION, type SnapshotMeta, type SportSnapshot } from "@/lib/data/snapshot-format";
 import { runBacktest, setPrecomputedBacktest, type BacktestResult } from "@/lib/engine/evaluation";
 import { topPlays, type Play } from "@/lib/server/top-plays";
 import { SPORTS } from "@/lib/sports";
+import { fantasyBacktest, type FantasyAccuracy } from "@/lib/fantasy/backtest";
+import { formatsFor } from "@/lib/fantasy/formats";
 import { espnJson } from "../server/espn/client";
 import { mergeNews, newsUrl, parseNews } from "@/lib/news";
 import { SPORT_IDS, type PlayerGameLog, type SportId } from "@/lib/types";
@@ -67,6 +70,10 @@ async function snapshotFor(espn: EspnProvider, sport: SportId): Promise<SportSna
     const u = verified(images.getTeamLogo(t));
     if (u) img.teams[t.id] = u;
   }
+  if (sport === "nfl") {
+    const w = await addNflWeather(games, teams, espn.now());
+    log(`nfl: game-time weather for ${w.updated} outdoor games${w.error ? ` (Open-Meteo unavailable: ${w.error})` : ""}`);
+  }
   const def = SPORTS[sport];
   return {
     v: SNAPSHOT_VERSION,
@@ -96,7 +103,7 @@ async function main() {
   const status = await waitForSync(espn);
   log("synced:", status.map((s) => `${s.sport} ${s.done}/${s.total}${s.failed ? ` (${s.failed} failed)` : ""}`).join("  "));
 
-  const meta: SnapshotMeta = { v: SNAPSHOT_VERSION, generatedAt: new Date().toISOString(), sports: [], files: { model: "model.json", plays: "plays.json" } };
+  const meta: SnapshotMeta = { v: SNAPSHOT_VERSION, generatedAt: new Date().toISOString(), sports: [], files: { model: "model.json", plays: "plays.json", fantasy: "fantasy.json" } };
   const snaps: SportSnapshot[] = [];
   for (const sport of SPORT_IDS) {
     try {
@@ -146,6 +153,20 @@ async function main() {
     log(`${s.sport}: ${up.plays.length} plays from ${up.considered} calls (${((Date.now() - t0) / 1000).toFixed(0)}s)`);
   }
   fs.writeFileSync(path.join(OUT, "plays.json"), JSON.stringify({ generatedAt: new Date().toISOString(), sports: plays, trackRecord }));
+  // fantasy projection accuracy (walk-forward backtest, every scoring format)
+  const accuracy: FantasyAccuracy[] = [];
+  for (const s of snaps)
+    for (const f of formatsFor(s.sport)) {
+      try {
+        const a = await fantasyBacktest(s.sport, f.id);
+        if (a.n) accuracy.push(a);
+        log(`${s.sport} fantasy ${f.short}: ${a.n} games, miss ${a.mae.toFixed(2)} vs season avg ${a.maeSeason.toFixed(2)}, start/sit ${((a.startSit ?? 0) * 100).toFixed(1)}%`);
+      } catch (e) {
+        log(`${s.sport} fantasy ${f.short}: backtest failed`, (e as Error).message);
+      }
+    }
+  fs.writeFileSync(path.join(OUT, "fantasy.json"), JSON.stringify({ generatedAt: new Date().toISOString(), accuracy }));
+
   // latest headlines (the app fetches fresh ones from ESPN too; this is the offline fallback)
   const news = mergeNews(await Promise.all(SPORT_IDS.map((s) => espnJson<unknown>(newsUrl(s, 30), 0).then((b) => parseNews(s, b)).catch(() => []))));
   fs.writeFileSync(path.join(OUT, "news.json"), JSON.stringify({ generatedAt: new Date().toISOString(), items: news.slice(0, 150) }));

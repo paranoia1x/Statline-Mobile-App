@@ -66,6 +66,30 @@ export interface Game {
   status: GameStatus;
   homeScore: number | null;
   awayScore: number | null;
+  /** Betting market (home spread, game total, moneylines): the closing line for finals, the current line for upcoming games. */
+  odds?: GameOdds | null;
+  /** Forecast (upcoming) weather at kick-off; outdoor venues only. */
+  weather?: GameWeather | null;
+  /** Domed / roofed venue (weather doesn't matter). */
+  indoor?: boolean;
+  neutralSite?: boolean;
+}
+
+export interface GameOdds {
+  /** Home team's point spread (negative = home favoured). */
+  spread: number | null;
+  total: number | null;
+  homeMl: number | null;
+  awayMl: number | null;
+}
+
+export interface GameWeather {
+  temperatureF: number | null;
+  condition: string;
+  windMph: number | null;
+  /** 0–100 */
+  precipChance: number | null;
+  source: string;
 }
 
 /** Real-time state of a game (scoreboard). */

@@ -3,6 +3,8 @@ import { useData, useSport } from "@/hooks";
 import { gamesBetween, keyPlayersFor, trendingPerformances } from "@/lib/server/dashboard";
 import { gameVM, teamMap } from "@/lib/server/lookups";
 import { upcomingPlays } from "@/lib/plays";
+import { getFantasyBoard } from "@/lib/fantasy/board";
+import { GradePill } from "@/components/fantasy";
 import { loadNews } from "@/lib/news-client";
 import { timeAgo } from "@/components/news";
 import { NewsImage } from "@/components/NewsImage";
@@ -18,10 +20,12 @@ import { NavIcon } from "@/components/icons";
 import { EmptyState, SportTag } from "@/components/ui";
 
 const TOOLS = [
+  { href: "/fantasy", label: "Fantasy", desc: "Projected points & matchups", icon: ICONS.fantasy },
   { href: "/predictions", label: "AI Predictions", desc: "Hit chance for any line", icon: ICONS.predict },
   { href: "/plays", label: "Top Plays", desc: "Strongest calls today", icon: ICONS.plays },
   { href: "/analyze", label: "Pick Analyzer", desc: "Check picks from a screenshot", icon: ICONS.analyze },
   { href: "/parlay", label: "Parlay Analyzer", desc: "Chance your parlay hits", icon: ICONS.parlay },
+  { href: "/matchups", label: "Matchups", desc: "Rosters, ranks & previews", icon: ICONS.matchups },
 ];
 
 function ago(iso: string) {
@@ -49,6 +53,11 @@ export default function Home() {
   }, [sport]);
 
   const plays = useData(async () => upcomingPlays(await loadPlays(), sport).slice(0, 5), [sport]);
+  const fantasy = useData(async () => {
+    const s = sport ?? "nfl";
+    const b = await getFantasyBoard(s, null, null);
+    return { sport: s, label: b.slates.find((x) => x.id === b.slate)?.label ?? "", format: b.format.label, rows: b.rows.filter((r) => r.status !== "out").slice(0, 8) };
+  }, [sport]);
   const trending = useData(() => trendingPerformances(sport, 5), [sport]);
   const news = useData(async () => (await loadNews(sport)).items.slice(0, 4), [sport]);
   const model = useData(async () => (await loadModel()).filter((b) => !sport || b.sport === sport), [sport]);
@@ -116,6 +125,27 @@ export default function Home() {
               </a>
             ))}
           </ListCard>
+        </Section>
+      )}
+
+      {fantasy.data && fantasy.data.rows.length > 0 && (
+        <Section title={`Fantasy leaders · ${SPORTS[fantasy.data.sport].name}`} action={<a href="#/fantasy" className="text-brand-light">All projections →</a>}>
+          <Carousel>
+            {fantasy.data.rows.map((r) => (
+              <a key={r.id} href="#/fantasy" className="card w-[42vw] max-w-[170px] shrink-0 snap-start p-3 active:bg-ink-850">
+                <div className="flex items-center justify-between">
+                  <PlayerAvatar name={r.player.name} imageUrl={r.player.imageUrl} size="sm" ringColor={r.team.colors.primary} />
+                  <span className="num text-lg font-semibold text-white">{r.points.toFixed(1)}</span>
+                </div>
+                <div className="mt-2 truncate text-sm font-medium text-ink-100">{r.player.name}</div>
+                <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-ink-400">
+                  <span className="truncate">{r.groupLabel} · {r.home ? "vs" : "@"} {r.opponent.abbreviation}</span>
+                  {r.matchup && <GradePill grade={r.matchup.grade} />}
+                </div>
+              </a>
+            ))}
+          </Carousel>
+          <p className="px-1 text-[11px] text-ink-500">{fantasy.data.label} · {fantasy.data.format} scoring · projections, not guarantees.</p>
         </Section>
       )}
 

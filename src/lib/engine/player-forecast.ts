@@ -85,6 +85,10 @@ export interface ForecastInput {
   now?: Date;
   /** Regular teammates out for this game (see engine/teammates.ts). */
   teammatesOut?: { share: number; players: { id: string; name: string; share: number }[] } | null;
+  /** Team's betting-market implied total for this game and its usual scoring (see engine/odds.ts). */
+  gameEnv?: { expected: number; usual: number } | null;
+  /** Days since the team's previous game. */
+  restDays?: number | null;
 }
 
 const DAY = 86_400_000;
@@ -110,7 +114,19 @@ export const MODEL_PARAMS = {
   teammateBoost: { nba: 0.3, nfl: 0, mlb: 0, nhl: 0, soccer: 0 } as Record<SportId, number>,
   /** Only teammates holding at least this share of team production count as a meaningful absence. */
   teammateMinShare: 0.12,
+  /**
+   * Elasticity of a player's stats to his team's betting-market implied total relative to what the
+   * team usually scores (0 = unused). Tuned on the walk-forward backtest (scripts/tune-props.ts).
+   */
+  // Backtest (Nov 2026): soccer log loss 0.4698 → 0.4665, accuracy 77.8% → 78.7%; no gain in the NBA, NFL or NHL,
+  // where the opponent adjustment already captures it.
+  envStrength: { nba: 0, nfl: 0, mlb: 0, nhl: 0, soccer: 0.5 } as Record<SportId, number>,
+  /** Multiplier on the second night of a back-to-back (1 = unused; 0.94–0.97 made NBA/NHL forecasts slightly worse). */
+  backToBack: { nba: 1, nfl: 1, mlb: 1, nhl: 1, soccer: 1 } as Record<SportId, number>,
 };
+
+/** Position groups whose stats depend on the opponent's offense, not their own team's (pitchers, goalies). */
+const DEFENSIVE_GROUPS = new Set(["SP", "G", "GK"]);
 
 /** The player's typical line: median of the last 10 games, as a half-point line (same rule as the backtest). */
 export function typicalLine(values: number[]): number | null {
@@ -231,6 +247,27 @@ export function computePlayerForecast(input: ForecastInput): PlayerForecast {
     effect: oppAdj,
   });
 
+  // ---------- game environment (betting-market team total) ----------
+  let envAdj = 1;
+  const envK = P.envStrength[player.sport] ?? 0;
+  const env = input.gameEnv && input.gameEnv.usual > 0 && !DEFENSIVE_GROUPS.has(player.positionGroup) ? input.gameEnv : null;
+  if (env && envK) envAdj = clamp(Math.pow(env.expected / env.usual, envK), 0.85, 1.18);
+  components.push({
+    label: "Game environment",
+    value: env ? `Team implied total ${env.expected.toFixed(1)} vs usual ${env.usual.toFixed(1)} (${envK ? pctEffect(envAdj) : "context only"})` : "No betting line for this game",
+    effect: envAdj,
+    note: "The betting market's expected score for the team prices in both teams, pace, injuries and weather.",
+  });
+
+  // ---------- rest ----------
+  let restAdj = 1;
+  const b2b = P.backToBack[player.sport] ?? 1;
+  if (b2b !== 1 && input.restDays != null && input.restDays < 1.6) {
+    restAdj = b2b;
+    context.push("Second night of a back-to-back: production is typically a little lower.");
+  }
+  if (b2b !== 1) components.push({ label: "Rest", value: input.restDays == null ? "Unknown" : input.restDays < 1.6 ? `Back-to-back (${pctEffect(restAdj)})` : `${Math.round(input.restDays)} days`, effect: restAdj });
+
   // ---------- venue ----------
   const venueLogs = played.filter((l) => l.home === input.home);
   let venueAdj = 1;
@@ -254,7 +291,7 @@ export function computePlayerForecast(input: ForecastInput): PlayerForecast {
   components.push({ label: "Head-to-head", value: h2h.length ? `${h2h.length} games, avg ${fmt(mean(h2hVals))} (${pctEffect(h2hAdj)})` : "No prior meetings", effect: h2hAdj, note: "Deliberately small weight: head-to-head samples are short and noisy." });
 
   // ---------- projection & distribution ----------
-  const mu = Math.max(0, base * minutesAdj * effectiveAvail * mateAdj * oppAdj * venueAdj * h2hAdj);
+  const mu = Math.max(0, base * minutesAdj * effectiveAvail * mateAdj * oppAdj * envAdj * restAdj * venueAdj * h2hAdj);
   const recentForSpread = values.slice(-30);
   const cvRaw = recentForSpread.length >= 5 && mean(recentForSpread) > 0 ? sd(recentForSpread) / mean(recentForSpread) : 0.6;
   const cv = clamp(Number.isFinite(cvRaw) ? cvRaw : 0.6, 0.12, 2.5);
@@ -362,6 +399,13 @@ export function computePlayerForecast(input: ForecastInput): PlayerForecast {
     });
     if (similar.length >= 3) addAvg("Against opponents with a similar profile", similar.slice(-15).map((l) => statValue(l, stat)!), "similar", 0.35);
   }
+  if (env && Math.abs(envAdj - 1) >= 0.02)
+    ev.push({
+      text: `Betting market expects ${env.expected.toFixed(1)} from the team vs its usual ${env.usual.toFixed(1)} (${pctEffect(envAdj)} applied).`,
+      direction: envAdj > 1 ? "over" : "under",
+      weight: Math.min(0.8, Math.abs(envAdj - 1) * 5),
+      kind: "opponent",
+    });
   if (mates && mateAdj > 1.02)
     ev.push({
       text: `${mates.players.slice(0, 2).map((x) => x.name).join(" and ")} ${mates.players.length === 1 ? "is" : "are"} out (${Math.round(mates.share * 100)}% of the team's ${stat.label.toLowerCase()}); projection raised ${pctEffect(mateAdj)}.`,

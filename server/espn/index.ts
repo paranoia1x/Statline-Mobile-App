@@ -17,7 +17,7 @@ import { SPORT_IDS } from "@/lib/types";
 import { registerImage } from "@/lib/images/registry";
 import { setSportLabels } from "@/lib/sports";
 import { espnJson, readBox, writeBox } from "./client";
-import { parseSummary, type CompactGame } from "./parse";
+import { COMPACT_GAME_VERSION, parseSummary, type CompactGame } from "./parse";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const SITE = "https://site.api.espn.com/apis/site/v2/sports";
@@ -49,7 +49,7 @@ function positionGroup(sport: SportId, pos: string): string | null {
     case "nba":
       return p.startsWith("C") ? "C" : p.includes("F") ? "F" : p.includes("G") ? "G" : null;
     case "nfl":
-      return p === "QB" ? "QB" : p === "RB" || p === "FB" ? "RB" : p === "WR" ? "WR" : p === "TE" ? "TE" : null;
+      return p === "QB" ? "QB" : p === "RB" || p === "FB" ? "RB" : p === "WR" ? "WR" : p === "TE" ? "TE" : p === "PK" || p === "K" ? "K" : null;
     case "mlb":
       return p === "SP" || p === "RP" || p === "P" ? "SP" : "H";
     case "nhl":
@@ -67,13 +67,19 @@ const slimEvents = (j: any) => ({
     id: e.id,
     date: e.date,
     season: e.season ? { year: e.season.year } : undefined,
+    weather: e.weather ? { displayValue: e.weather.displayValue, temperature: e.weather.temperature, conditionId: e.weather.conditionId } : undefined,
     competitions: (e.competitions ?? []).slice(0, 1).map((c: any) => ({
       status: {
         type: { name: c.status?.type?.name, completed: c.status?.type?.completed, state: c.status?.type?.state, shortDetail: c.status?.type?.shortDetail },
         period: c.status?.period,
         displayClock: c.status?.displayClock,
       },
-      venue: c.venue ? { fullName: c.venue.fullName } : undefined,
+      venue: c.venue ? { fullName: c.venue.fullName, indoor: c.venue.indoor, address: c.venue.address ? { city: c.venue.address.city, state: c.venue.address.state } : undefined } : undefined,
+      neutralSite: c.neutralSite,
+      odds: (c.odds ?? []).slice(0, 1).map((o: any) => ({
+        spread: o.spread, overUnder: o.overUnder,
+        homeMl: o.homeTeamOdds?.moneyLine ?? o.moneyline?.home?.close?.odds, awayMl: o.awayTeamOdds?.moneyLine ?? o.moneyline?.away?.close?.odds,
+      })),
       competitors: (c.competitors ?? []).map((x: any) => ({ homeAway: x.homeAway, id: x.id, team: { id: x.team?.id }, score: x.score })),
     })),
   })),
@@ -101,6 +107,27 @@ const injuryStatus = (s: string): AvailabilityStatus => {
   return "out"; // Out, Injured Reserve, IL, Suspension…
 };
 const SEASON_ENDING = /out for (the )?(rest of the )?season|season[- ]ending|miss the (rest of the |remainder of the )?season/i;
+
+const numOrNull = (v: unknown) => {
+  const x = typeof v === "string" ? Number(v.replace(/^[ou+]/i, "")) : Number(v);
+  return v == null || v === "" || !Number.isFinite(x) ? null : x;
+};
+/** Betting line, weather and roof from a scoreboard/schedule event (whatever ESPN publishes for it). */
+function gameExtras(e: any, c: any): Partial<Game> {
+  const out: Partial<Game> = {};
+  const o = c.odds?.[0];
+  if (o) {
+    const odds = { spread: numOrNull(o.spread), total: numOrNull(o.overUnder), homeMl: numOrNull(o.homeMl), awayMl: numOrNull(o.awayMl) };
+    if (odds.spread != null || odds.total != null || odds.homeMl != null) out.odds = odds;
+  }
+  if (typeof c.venue?.indoor === "boolean") out.indoor = c.venue.indoor || ROOFED_VENUES.test(c.venue.fullName ?? "");
+  if (c.neutralSite) out.neutralSite = true;
+  if (e.weather && typeof e.weather.temperature === "number")
+    out.weather = { temperatureF: e.weather.temperature, condition: String(e.weather.displayValue ?? ""), windMph: null, precipChance: null, source: "ESPN" };
+  return out;
+}
+/** Stadiums ESPN lists as open-air that have a fixed roof over the field. */
+const ROOFED_VENUES = /SoFi Stadium/i;
 
 interface SportState {
   teams: Team[];
@@ -263,6 +290,7 @@ export class EspnProvider implements SportsDataProvider {
         status: completed ? "final" : "scheduled",
         homeScore: completed ? score(h) : null,
         awayScore: completed ? score(a) : null,
+        ...gameExtras(e, c),
       });
     };
     let currentYear: number | null = null;
@@ -369,7 +397,8 @@ export class EspnProvider implements SportsDataProvider {
           const eventId = g.id.split("-g")[1];
           try {
             let box = await readBox<CompactGame>(sport, eventId);
-            if (!box) {
+            // older cached boxes lack odds and some fantasy stats: fetch them once more
+            if (!box || (box.v ?? 1) < COMPACT_GAME_VERSION) {
               const j = await espnJson<any>(`${base}/summary?event=${eventId}`, 0);
               box = parseSummary(sport, eventId, j);
               if (box) await writeBox(sport, eventId, box);
@@ -403,6 +432,7 @@ export class EspnProvider implements SportsDataProvider {
     const games = [...s.boxes.entries()].map(([id, box]) => ({ g: s.games.get(id), box })).filter((x) => x.g) as { g: Game; box: CompactGame }[];
     games.sort((a, b) => a.g.date.localeCompare(b.g.date));
     for (const { g, box } of games) {
+      if (box.odds && !g.odds) g.odds = box.odds;
       const sides = [
         { t: s.teamByEspn.get(box.home.teamEspnId), o: s.teamByEspn.get(box.away.teamEspnId), me: box.home, opp: box.away, home: true },
         { t: s.teamByEspn.get(box.away.teamEspnId), o: s.teamByEspn.get(box.home.teamEspnId), me: box.away, opp: box.home, home: false },
@@ -462,7 +492,7 @@ export class EspnProvider implements SportsDataProvider {
           });
           break;
         case "nfl":
-          starters = [...pick("QB", 1), ...pick("RB", 1), ...pick("WR", 3), ...pick("TE", 1)];
+          starters = [...pick("QB", 1), ...pick("RB", 1), ...pick("WR", 3), ...pick("TE", 1), ...pick("K", 1)];
           break;
         case "mlb":
           starters = roster.filter((p) => {
