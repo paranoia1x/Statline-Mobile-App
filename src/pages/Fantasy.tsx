@@ -3,55 +3,57 @@ import { loadFantasyModel } from "@/boot";
 import { useData, useSport } from "@/hooks";
 import { getFantasyBoard, projectedStatLine, type FantasyRow } from "@/lib/fantasy/board";
 import { getFormat, formatsFor } from "@/lib/fantasy/formats";
-import { readFantasyFormats, saveFantasyFormats } from "@/lib/fantasy/preferences";
 import { SPORTS } from "@/lib/sports";
 import type { SportId } from "@/lib/types";
 import { cx, fmtDate } from "@/lib/format";
 import { AccuracyNote, FantasyRowCard, SlateGameCard, StatLine } from "@/components/fantasy";
 import { Carousel, Disclaimer, ErrorBox, Loading, Section, Segmented } from "@/components/mobile";
 import { EmptyState } from "@/components/ui";
-import { navigate } from "@/router";
 
+const FORMAT_KEY = "sl.fantasyFormat";
 const PAGE = 40;
 
-/** Sport shown when the global filter is "All". */
+function readFormats(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(FORMAT_KEY) ?? "{}") ?? {};
+  } catch {
+    return {};
+  }
+}
+
+/** Sport shown when the global filter is "All": the first one with games this week. */
 const DEFAULT_SPORT: SportId = "nfl";
 
 export default function Fantasy({ query }: { query: URLSearchParams }) {
   const [globalSport] = useSport();
   const sport: SportId = globalSport ?? DEFAULT_SPORT;
-  const [formats, setFormats] = useState(readFantasyFormats);
-  const format = getFormat(formats[sport], sport);
-  const formatId = format.id;
+  const [formats, setFormats] = useState(readFormats);
+  const formatId = getFormat(formats[sport], sport).id;
   const [slate, setSlate] = useState<string | null>(null);
-  const position = query.get("pos") ?? "ALL";
-  const group = format.groups.includes(position) ? position : "ALL";
+  const [group, setGroup] = useState<string>(query.get("pos") ?? "ALL");
   const [q, setQ] = useState("");
   const [open, setOpen] = useState<string | null>(null);
   const [limit, setLimit] = useState(PAGE);
 
   useEffect(() => {
     setSlate(null);
+    setGroup("ALL");
     setOpen(null);
   }, [sport]);
   useEffect(() => setLimit(PAGE), [sport, formatId, slate, group, q]);
 
   const board = useData(() => getFantasyBoard(sport, formatId, slate), [sport, formatId, slate]);
   const model = useData(loadFantasyModel, []);
-  const accuracy = model.data?.accuracy.find((a) => a.sport === sport && a.format === formatId);
+  const accuracy = model.data?.accuracy.find((a) => a.sport === sport && a.format === formatId) ?? model.data?.accuracy.find((a) => a.sport === sport);
 
   const setFormat = (id: string) => {
     const next = { ...formats, [sport]: id };
     setFormats(next);
-    saveFantasyFormats(next);
-  };
-
-  const setGroup = (id: string) => {
-    const params = new URLSearchParams(query);
-    if (id === "ALL") params.delete("pos");
-    else params.set("pos", id);
-    const search = params.toString();
-    navigate(search ? `/fantasy?${search}` : "/fantasy", { replace: true });
+    try {
+      localStorage.setItem(FORMAT_KEY, JSON.stringify(next));
+    } catch {
+      /* private mode */
+    }
   };
 
   const rows = useMemo(() => {
@@ -81,7 +83,7 @@ export default function Fantasy({ query }: { query: URLSearchParams }) {
             <Segmented value={formatId} options={fmts.map((f) => ({ id: f.id, label: f.short }))} onChange={setFormat} />
           </div>
         )}
-        <p className="mt-2 text-[11px] text-ink-400">{format.note}</p>
+        <p className="mt-2 text-[11px] text-ink-400">{getFormat(formatId, sport).note}</p>
       </section>
 
       <AccuracyNote a={accuracy} />

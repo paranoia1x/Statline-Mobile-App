@@ -163,7 +163,6 @@ const nfl: SportDef = {
     { key: "passTd", label: "Passing touchdowns", short: "PASS TD", format: "dec1", groups: ["QB"], forecastable: true, dist: "count", dim: "pass" },
     { key: "int", label: "Interceptions", short: "INT", format: "dec1", groups: ["QB"], forecastable: true, dist: "count", dim: "takeaways", higherIsBetter: false },
     { key: "rushYds", label: "Rushing yards", short: "RUSH YDS", format: "dec1", groups: ["QB", "RB"], forecastable: true, dist: "continuous", dim: "run" },
-    { key: "rushTd", label: "Rushing touchdowns", short: "RUSH TD", format: "dec2", groups: ["QB", "RB"], forecastable: false, dist: "count" },
     { key: "carries", label: "Carries", short: "CAR", format: "dec1", groups: ["RB"], forecastable: true, dist: "count", dim: "run" },
     { key: "rec", label: "Receptions", short: "REC", format: "dec1", groups: ["RB", "WR", "TE"], forecastable: true, dist: "count", dim: "pass" },
     { key: "recYds", label: "Receiving yards", short: "REC YDS", format: "dec1", groups: ["RB", "WR", "TE"], forecastable: true, dist: "continuous", dim: "pass" },
