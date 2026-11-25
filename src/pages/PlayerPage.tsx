@@ -15,6 +15,8 @@ import { RecordRecentPlayer, SaveToVault } from "@/components/actions";
 import { ErrorBox, Loading, Section } from "@/components/mobile";
 import { AvailabilityBadge, Badge, EmptyState, Warning } from "@/components/ui";
 import { getPlayerFantasy } from "@/lib/fantasy/board";
+import { readFantasyFormats } from "@/lib/fantasy/preferences";
+import type { SportId } from "@/lib/types";
 import { ComponentBars, FactsGrid, GradePill, StatLine, TierBadge } from "@/components/fantasy";
 
 function cellFmt(v: number | null, f: Parameters<typeof formatStat>[1]) {
@@ -116,7 +118,7 @@ export default function PlayerPage({ id }: { id: string }) {
         </div>
       </section>
 
-      <FantasyCard id={player.id} />
+      <FantasyCard id={player.id} sport={player.sport} />
 
       {roleNote && <Warning>Recent role change — {roleNote.title.toLowerCase()}: {roleNote.detail}</Warning>}
 
@@ -272,9 +274,10 @@ export default function PlayerPage({ id }: { id: string }) {
   );
 }
 
-/** Next-game fantasy projection (default scoring format for the sport). */
-function FantasyCard({ id }: { id: string }) {
-  const f = useData(() => getPlayerFantasy(id).catch(() => null), [id]);
+/** Next-game fantasy projection in the saved scoring format for the sport. */
+function FantasyCard({ id, sport }: { id: string; sport: SportId }) {
+  const formatId = readFantasyFormats()[sport];
+  const f = useData(() => getPlayerFantasy(id, formatId).catch(() => null), [id, formatId]);
   if (!f.data) return null;
   const { row, board, line } = f.data;
   return (
