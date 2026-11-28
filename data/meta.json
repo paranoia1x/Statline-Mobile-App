@@ -1,0 +1,51 @@
+{
+ "v": 1,
+ "generatedAt": "2026-11-28T08:04:44.631Z",
+ "sports": [
+  {
+   "sport": "nba",
+   "file": "nba.json",
+   "bytes": 1182184,
+   "games": 2457,
+   "finals": 1512,
+   "players": 530
+  },
+  {
+   "sport": "nfl",
+   "file": "nfl.json",
+   "bytes": 1350965,
+   "games": 544,
+   "finals": 440,
+   "players": 834
+  },
+  {
+   "sport": "mlb",
+   "file": "mlb.json",
+   "bytes": 1661804,
+   "games": 4860,
+   "finals": 2430,
+   "players": 785
+  },
+  {
+   "sport": "nhl",
+   "file": "nhl.json",
+   "bytes": 1614831,
+   "games": 2656,
+   "finals": 1726,
+   "players": 860
+  },
+  {
+   "sport": "soccer",
+   "file": "soccer.json",
+   "bytes": 458441,
+   "games": 402,
+   "finals": 382,
+   "players": 608
+  }
+ ],
+ "files": {
+  "model": "model.json",
+  "plays": "plays.json",
+  "fantasy": "fantasy.json"
+ }
+}
